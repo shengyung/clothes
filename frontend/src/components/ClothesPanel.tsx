@@ -37,7 +37,7 @@ export default function ClothesPanel({
           選擇服裝
         </div>
         <div className="flex gap-2">
-          <button className="bg-transparent border border-[var(--forma-border)] text-taupe px-3 py-1.5 font-sans text-[0.72rem] tracking-[0.08em] uppercase cursor-pointer transition-all hover:border-white/30 hover:text-cream">
+          <button className="bg-transparent border border-[var(--forma-border)] text-taupe px-3 py-1.5 font-sans text-[0.72rem] tracking-[0.08em] uppercase cursor-pointer transition-all hover:border-black/30 hover:text-cream">
             匯入衣物
           </button>
           <button className="bg-forma-accent-dark text-white border-none px-3 py-1.5 font-sans text-[0.72rem] tracking-[0.08em] uppercase cursor-pointer transition-colors hover:bg-forma-accent">

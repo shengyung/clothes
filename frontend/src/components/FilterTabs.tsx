@@ -38,7 +38,7 @@ function TabGroup({
             className={`px-3 py-1 text-[0.72rem] tracking-[0.04em] border transition-all ${
               value === opt
                 ? "bg-forma-accent-dark text-white border-forma-accent-dark"
-                : "bg-transparent text-taupe border-[var(--forma-border)] hover:border-white/30 hover:text-cream"
+                : "bg-transparent text-taupe border-[var(--forma-border)] hover:border-black/30 hover:text-cream"
             }`}
           >
             {opt}

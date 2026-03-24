@@ -24,8 +24,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from app.api import garments, tryon, upload  # noqa: E402
+from app.api import auth, garments, tryon, upload  # noqa: E402
 
+app.include_router(auth.router, prefix="/api")
 app.include_router(garments.router, prefix="/api")
 app.include_router(tryon.router, prefix="/api")
 app.include_router(upload.router, prefix="/api")

@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "sqlite:///./tryon.db"
 
+    # JWT
+    jwt_secret: str = "change-me-in-production"
+    jwt_expire_days: int = 7
+
     # Public URL for MinIO (used for presigned URLs accessible from browser)
     minio_public_endpoint: str = "localhost:9000"
 

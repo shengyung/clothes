@@ -13,6 +13,8 @@ dependencies = [
     "pillow>=11.0",
     "pydantic-settings>=2.7",
     "httpx>=0.28",
+    "pyjwt>=2.12.1",
+    "passlib[bcrypt]>=1.7.4",
 ]
 
 [tool.hatch.build.targets.wheel]
