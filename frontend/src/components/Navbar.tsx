@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { clearToken, getStoredUser, StoredUser } from "@/lib/auth";
+import { getStoredUser, StoredUser } from "@/lib/auth";
+import { logoutUser } from "@/lib/api";
 
 export default function Navbar() {
   const [user, setUser] = useState<StoredUser | null>(null);
@@ -13,8 +14,8 @@ export default function Navbar() {
     setUser(getStoredUser());
   }, []);
 
-  function handleLogout() {
-    clearToken();
+  async function handleLogout() {
+    await logoutUser();
     setUser(null);
     router.refresh();
   }
@@ -69,6 +70,12 @@ export default function Navbar() {
               className="text-[0.78rem] tracking-[0.1em] uppercase text-taupe no-underline transition-colors hover:text-cream"
             >
               歷史
+            </Link>
+            <Link
+              href="/profile"
+              className="text-[0.78rem] tracking-[0.1em] uppercase text-taupe no-underline transition-colors hover:text-cream"
+            >
+              設定
             </Link>
             <button
               onClick={handleLogout}

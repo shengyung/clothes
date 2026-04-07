@@ -4,7 +4,7 @@ import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { loginUser, registerUser, ssoLogin } from "@/lib/api";
-import { setToken, setStoredUser } from "@/lib/auth";
+import { setToken, setRefreshToken, setStoredUser } from "@/lib/auth";
 
 type Tab = "login" | "register";
 
@@ -34,7 +34,8 @@ export default function LoginPage() {
           user.name,
           (s.providerAvatar as string | null) ?? user.image
         );
-        setToken(res.token);
+        setToken(res.access_token);
+        setRefreshToken(res.refresh_token);
         setStoredUser(res.user);
         router.replace("/");
       } catch (e) {
@@ -54,7 +55,8 @@ export default function LoginPage() {
         tab === "login"
           ? await loginUser(email, password)
           : await registerUser(email, password, name || undefined);
-      setToken(res.token);
+      setToken(res.access_token);
+      setRefreshToken(res.refresh_token);
       setStoredUser(res.user);
       router.replace("/");
     } catch (e) {
@@ -122,7 +124,14 @@ export default function LoginPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[0.72rem] tracking-[0.08em] uppercase text-taupe">密碼</label>
+              <div className="flex items-center justify-between">
+                <label className="text-[0.72rem] tracking-[0.08em] uppercase text-taupe">密碼</label>
+                {tab === "login" && (
+                  <a href="/forgot-password" className="text-[0.72rem] text-taupe hover:text-cream transition-colors">
+                    忘記密碼？
+                  </a>
+                )}
+              </div>
               <input
                 type="password"
                 value={password}

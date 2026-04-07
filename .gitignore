@@ -29,3 +29,6 @@ Thumbs.db
 
 # MinIO data
 minio_data/
+
+# Claude Code
+.claude/
