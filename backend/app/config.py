@@ -17,7 +17,12 @@ class Settings(BaseSettings):
 
     # JWT
     jwt_secret: str = "change-me-in-production"
-    jwt_expire_days: int = 7
+    access_token_expire_minutes: int = 60 * 24   # 1 天
+    refresh_token_expire_days: int = 30
+
+    # Email (Resend)
+    resend_api_key: str = ""
+    frontend_url: str = "http://localhost:3000"
 
     # Public URL for MinIO (used for presigned URLs accessible from browser)
     minio_public_endpoint: str = "localhost:9000"

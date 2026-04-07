@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from sqlmodel import Field, SQLModel
 
 
+
 class User(SQLModel, table=True):
     id: str = Field(default_factory=lambda: uuid.uuid4().hex, primary_key=True)
     email: str = Field(unique=True, index=True)
@@ -31,4 +32,22 @@ class TryonTask(SQLModel, table=True):
     status: str = "pending"  # pending | processing | completed | failed
     result_image_url: str | None = None
     error: str | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class RefreshToken(SQLModel, table=True):
+    id: str = Field(default_factory=lambda: uuid.uuid4().hex, primary_key=True)
+    user_id: str = Field(foreign_key="user.id", index=True)
+    token_hash: str              # SHA-256 of raw token
+    expires_at: datetime
+    revoked: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class PasswordResetToken(SQLModel, table=True):
+    id: str = Field(default_factory=lambda: uuid.uuid4().hex, primary_key=True)
+    user_id: str = Field(foreign_key="user.id")
+    token_hash: str              # SHA-256 of raw token，一次性使用
+    expires_at: datetime         # 1 小時後過期
+    used: bool = Field(default=False)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
