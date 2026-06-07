@@ -1,5 +1,6 @@
 import Link from "next/link";
 import SizeFinder from "@/components/SizeFinder";
+import Navbar from "@/components/Navbar";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -181,48 +182,7 @@ const GRID_BG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/sv
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-[#F5F5F7] text-[#1D1D1F]">
-      {/* ── Nav ────────────────────────────────────────────── */}
-      <nav
-        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-5 bg-[rgba(245,245,247,0.85)] backdrop-blur-md border-b border-[rgba(0,0,0,0.05)]"
-        role="navigation"
-        aria-label="主選單"
-      >
-        <span className="font-serif text-[1.3rem] font-light tracking-[0.15em]">
-          ShapeOn<span className="text-[#6E6E73]">You</span>
-        </span>
-        <div className="flex items-center gap-6">
-          <a
-            href="#how-it-works"
-            className="hidden md:block text-[0.72rem] tracking-[0.1em] uppercase text-[rgba(0,0,0,0.45)] hover:text-[#1D1D1F] transition-colors duration-200 cursor-pointer"
-          >
-            如何使用
-          </a>
-          <a
-            href="#features"
-            className="hidden md:block text-[0.72rem] tracking-[0.1em] uppercase text-[rgba(0,0,0,0.45)] hover:text-[#1D1D1F] transition-colors duration-200 cursor-pointer"
-          >
-            功能
-          </a>
-          <Link
-            href="/size-guide"
-            className="hidden md:block text-[0.72rem] tracking-[0.1em] uppercase text-[rgba(0,0,0,0.45)] hover:text-[#1D1D1F] transition-colors duration-200 no-underline"
-          >
-            尺寸指南
-          </Link>
-          <Link
-            href="/login"
-            className="text-[0.72rem] tracking-[0.1em] uppercase text-[rgba(0,0,0,0.45)] hover:text-[#1D1D1F] transition-colors duration-200 no-underline"
-          >
-            登入
-          </Link>
-          <Link
-            href="/studio"
-            className="bg-[#1D1D1F] text-white text-[0.72rem] tracking-[0.12em] uppercase px-5 py-2.5 hover:bg-[#3a3a3c] transition-colors duration-200 no-underline"
-          >
-            立即試穿
-          </Link>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* ── Hero ───────────────────────────────────────────── */}
       <section
@@ -231,10 +191,10 @@ export default function LandingPage() {
         aria-label="主視覺"
       >
         <div className="flex flex-col items-center text-center gap-8 px-6 max-w-3xl">
-          {/* Badge */}
-          <div className="border border-[rgba(0,0,0,0.12)] px-4 py-1.5 text-[0.68rem] tracking-[0.2em] uppercase text-[rgba(0,0,0,0.4)]">
+          {/* Eyebrow */}
+          <p className="text-[0.62rem] tracking-[0.22em] uppercase text-[rgba(0,0,0,0.32)]">
             AI 虛擬試衣間
-          </div>
+          </p>
 
           {/* Headline */}
           <h1 className="font-serif text-[clamp(3.5rem,10vw,6rem)] font-light tracking-[0.1em] text-[#1D1D1F] leading-[0.95]">

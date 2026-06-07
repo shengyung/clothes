@@ -1,23 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getStoredUser, StoredUser } from "@/lib/auth";
 import { logoutUser } from "@/lib/api";
 
-const NAV_LINKS = [
+const NAV_LINKS: { label: string; href: string; disabled?: boolean }[] = [
   { label: "首頁", href: "/" },
-  { label: "品牌", href: "#" },
-  { label: "女裝", href: "#" },
-  { label: "男裝", href: "#" },
-  { label: "配件", href: "#" },
-  { label: "AI穿搭推薦", href: "#" },
+  { label: "尺寸推薦", href: "/size-guide" },
+  { label: "AI穿搭推薦", href: "#", disabled: true },
 ];
 
-export default function Navbar() {
+interface NavbarProps {
+  variant?: "site" | "app";
+}
+
+export default function Navbar({ variant = "site" }: NavbarProps) {
   const [user, setUser] = useState<StoredUser | null>(null);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     setUser(getStoredUser());
@@ -29,26 +31,33 @@ export default function Navbar() {
     router.refresh();
   }
 
-  return (
-    <nav className="flex items-center gap-4 px-6 py-3 border-b border-[var(--forma-border)] bg-white shrink-0 z-10">
-      {/* Logo */}
-      <Link href="/" className="no-underline shrink-0">
-        <div className="flex flex-col leading-none">
-          <span className="font-serif text-[1.3rem] font-light tracking-[0.12em] text-[#1D1D1F]">
-            FOR<span className="text-[#6E6E73]">MA</span>
-          </span>
-          <span className="text-[0.48rem] tracking-[0.16em] uppercase text-[rgba(0,0,0,0.32)]">AI 虛擬試穿</span>
-        </div>
-      </Link>
+  const logo = (
+    <Link href="/" className="no-underline shrink-0">
+      <span className="font-serif text-[1.3rem] font-light tracking-[0.15em] text-[#1D1D1F]">
+        ShapeOn<span className="text-[#6E6E73]">You</span>
+      </span>
+    </Link>
+  );
 
-      {/* Nav links */}
-      <ul className="flex items-center gap-5 list-none ml-3">
-        {NAV_LINKS.map(({ label, href }) => (
+  const navLinks = (
+    <ul className="flex items-center gap-5 list-none">
+      {NAV_LINKS.map(({ label, href, disabled }) => {
+        const isActive = pathname === href;
+        if (disabled) {
+          return (
+            <li key={label}>
+              <span className="text-[0.72rem] tracking-[0.04em] text-[rgba(0,0,0,0.25)] cursor-not-allowed select-none">
+                {label}
+              </span>
+            </li>
+          );
+        }
+        return (
           <li key={label}>
             <Link
               href={href}
-              className={`text-[0.72rem] tracking-[0.04em] no-underline transition-colors ${
-                label === "首頁"
+              className={`text-[0.72rem] tracking-[0.04em] no-underline transition-colors duration-200 ${
+                isActive
                   ? "text-[#1D1D1F] font-medium"
                   : "text-[rgba(0,0,0,0.45)] hover:text-[#1D1D1F]"
               }`}
@@ -56,18 +65,65 @@ export default function Navbar() {
               {label}
             </Link>
           </li>
-        ))}
-        {user?.is_admin && (
-          <li>
+        );
+      })}
+    </ul>
+  );
+
+  if (variant === "site") {
+    return (
+      <nav
+        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-5 bg-[rgba(245,245,247,0.88)] backdrop-blur-md border-b border-[rgba(0,0,0,0.05)]"
+        role="navigation"
+        aria-label="主選單"
+      >
+        {logo}
+        <div className="flex items-center gap-6 ml-8">
+          {navLinks}
+        </div>
+        <div className="flex items-center gap-4 ml-auto">
+          {user ? (
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-[#1D1D1F] flex items-center justify-center text-white text-[0.6rem] font-medium">
+                {(user.name || user.email)[0].toUpperCase()}
+              </div>
+              <button
+                onClick={handleLogout}
+                className="text-[0.65rem] text-[rgba(0,0,0,0.32)] hover:text-[#1D1D1F] transition-colors duration-200"
+              >
+                登出
+              </button>
+            </div>
+          ) : (
             <Link
-              href="/admin"
-              className="text-[0.72rem] tracking-[0.04em] text-[rgba(0,0,0,0.45)] hover:text-[#1D1D1F] no-underline transition-colors"
+              href="/login"
+              className="text-[0.72rem] tracking-[0.1em] uppercase text-[rgba(0,0,0,0.45)] hover:text-[#1D1D1F] transition-colors duration-200 no-underline"
             >
-              後台
+              登入
             </Link>
-          </li>
-        )}
-      </ul>
+          )}
+          <Link
+            href="/studio"
+            className="bg-[#1D1D1F] text-white text-[0.72rem] tracking-[0.12em] uppercase px-5 py-2.5 hover:bg-[#3a3a3c] transition-colors duration-200 no-underline"
+          >
+            試衣間
+          </Link>
+        </div>
+      </nav>
+    );
+  }
+
+  // variant === "app" — static, full toolbar
+  return (
+    <nav
+      className="flex items-center gap-4 px-6 py-3 border-b border-[var(--forma-border)] bg-white shrink-0 z-10"
+      role="navigation"
+      aria-label="應用程式導航"
+    >
+      {logo}
+      <div className="ml-3">
+        {navLinks}
+      </div>
 
       {/* Search */}
       <div className="flex-1 max-w-xs ml-auto">
@@ -86,24 +142,19 @@ export default function Navbar() {
 
       {/* Actions */}
       <div className="flex items-center gap-2 shrink-0">
-        {/* Upload button */}
-        <button className="flex items-center gap-1.5 px-3 py-2 border border-[var(--forma-border)] rounded-lg text-[0.7rem] text-[rgba(0,0,0,0.5)] hover:border-[rgba(0,0,0,0.25)] hover:text-[#1D1D1F] transition-colors">
+        <button className="flex items-center gap-1.5 px-3 py-2 border border-[var(--forma-border)] rounded-lg text-[0.7rem] text-[rgba(0,0,0,0.5)] hover:border-[rgba(0,0,0,0.25)] hover:text-[#1D1D1F] transition-colors cursor-pointer">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
             <path d="M8 2v9M4 6l4-4 4 4" />
             <path d="M2 13h12" />
           </svg>
           上傳照片
         </button>
-
-        {/* Notification */}
-        <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#F5F5F7] transition-colors text-[rgba(0,0,0,0.4)] hover:text-[#1D1D1F]">
+        <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#F5F5F7] transition-colors text-[rgba(0,0,0,0.4)] hover:text-[#1D1D1F] cursor-pointer">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
             <path d="M8 1a5 5 0 00-5 5v3L1.5 11.5h13L13 9V6a5 5 0 00-5-5z" />
             <path d="M6.5 13.5a1.5 1.5 0 003 0" />
           </svg>
         </button>
-
-        {/* User */}
         {user ? (
           <div className="flex items-center gap-2 pl-2 border-l border-[var(--forma-border)] ml-1">
             {user.avatar_url ? (
@@ -120,12 +171,9 @@ export default function Navbar() {
             <span className="text-[0.72rem] text-[#1D1D1F] max-w-[70px] truncate">
               Hi, {user.name || user.email.split("@")[0]}
             </span>
-            <svg viewBox="0 0 12 12" fill="none" stroke="rgba(0,0,0,0.4)" strokeWidth="1.5" className="w-2.5 h-2.5">
-              <path d="M2 4l4 4 4-4" />
-            </svg>
             <button
               onClick={handleLogout}
-              className="text-[0.65rem] text-[rgba(0,0,0,0.32)] hover:text-[#1D1D1F] transition-colors ml-1"
+              className="text-[0.65rem] text-[rgba(0,0,0,0.32)] hover:text-[#1D1D1F] transition-colors ml-1 cursor-pointer"
             >
               登出
             </button>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
 import { fetchGarments, type Garment } from "@/lib/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -294,35 +295,7 @@ export default function SizeGuideClient() {
 
   return (
     <div className="min-h-screen bg-[#F5F5F7] text-[#1D1D1F]">
-
-      {/* ── Nav ──────────────────────────────────────────────── */}
-      <nav
-        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-5 bg-[rgba(245,245,247,0.88)] backdrop-blur-md border-b border-[rgba(0,0,0,0.05)]"
-        role="navigation"
-        aria-label="主選單"
-      >
-        <Link href="/" className="no-underline font-serif text-[1.3rem] font-light tracking-[0.15em] text-[#1D1D1F]">
-          ShapeOn<span className="text-[#6E6E73]">You</span>
-        </Link>
-        <div className="flex items-center gap-5">
-          <Link href="/#how-it-works"
-            className="hidden md:block text-[0.72rem] tracking-[0.1em] uppercase text-[rgba(0,0,0,0.45)] hover:text-[#1D1D1F] transition-colors duration-200 no-underline">
-            如何使用
-          </Link>
-          <Link href="/size-guide"
-            className="hidden md:block text-[0.72rem] tracking-[0.1em] uppercase text-[#1D1D1F] border-b border-[#1D1D1F] pb-0.5 no-underline">
-            尺寸指南
-          </Link>
-          <Link href="/login"
-            className="text-[0.72rem] tracking-[0.1em] uppercase text-[rgba(0,0,0,0.45)] hover:text-[#1D1D1F] transition-colors duration-200 no-underline">
-            登入
-          </Link>
-          <Link href="/studio"
-            className="bg-[#1D1D1F] text-white text-[0.72rem] tracking-[0.12em] uppercase px-5 py-2.5 hover:bg-[#3a3a3c] transition-colors duration-200 no-underline">
-            試衣間
-          </Link>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* ── Page header ──────────────────────────────────────── */}
       <div className="pt-28 pb-10 px-8 max-w-5xl mx-auto">
