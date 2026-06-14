@@ -19,7 +19,7 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "FORMA — 虛擬試衣間",
+  title: "ShapeOnYou — 虛擬試衣間",
   description: "AI-powered virtual clothes try-on",
 };
 

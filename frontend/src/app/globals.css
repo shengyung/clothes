@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── FORMA Design System ── */
+/* ── ShapeOnYou Design System ── */
 :root {
   --cream: #1D1D1F;
   --warm-white: rgba(255, 255, 255, 0.85);
@@ -14,7 +14,7 @@
   --forma-border: rgba(0, 0, 0, 0.08);
 }
 
-/* Keep shadcn/ui variables mapped to FORMA palette */
+/* Keep shadcn/ui variables mapped to ShapeOnYou palette */
 @layer base {
   :root {
     --background: 38 33% 93%;
@@ -100,5 +100,13 @@ input[type=range]::-moz-range-thumb {
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-bounce,
+  .animate-pulse,
+  .animate-spin {
+    animation: none;
   }
 }
