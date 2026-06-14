@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>智能試衣平台 — 系統架構圖</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 40px 24px 80px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.5px;
+    }
+
+    header p {
+      margin-top: 8px;
+      color: #94a3b8;
+      font-size: 0.95rem;
+    }
+
+    .badge {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      background: rgba(96, 165, 250, 0.15);
+      border: 1px solid rgba(96, 165, 250, 0.35);
+      color: #60a5fa;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+
+    .diagram-section {
+      max-width: 1100px;
+      margin: 0 auto 56px;
+    }
+
+    .diagram-section h2 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .diagram-section h2 .icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.95rem;
+      flex-shrink: 0;
+    }
+
+    .diagram-section h2 .icon.arch { background: rgba(96, 165, 250, 0.2); }
+    .diagram-section h2 .icon.seq  { background: rgba(167, 139, 250, 0.2); }
+
+    .diagram-section .subtitle {
+      color: #64748b;
+      font-size: 0.85rem;
+      margin-bottom: 20px;
+      padding-left: 38px;
+    }
+
+    .diagram-card {
+      background: #1a1f2e;
+      border: 1px solid #2d3748;
+      border-radius: 16px;
+      padding: 32px 24px;
+      overflow-x: auto;
+    }
+
+    .diagram-card .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+
+    /* Mermaid override for dark theme */
+    .mermaid svg {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .divider {
+      max-width: 1100px;
+      margin: 0 auto 56px;
+      border: none;
+      border-top: 1px solid #1e293b;
+    }
+
+    footer {
+      text-align: center;
+      color: #334155;
+      font-size: 0.8rem;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>智能試衣平台（Virtual Try-On）</h1>
+  <p>系統架構視覺化文件</p>
+  <span class="badge">MVP · 2026-06-08</span>
+</header>
+
+<!-- 圖一：系統架構圖 -->
+<section class="diagram-section">
+  <h2>
+    <span class="icon arch">🏗</span>
+    系統架構圖（生產環境）
+  </h2>
+  <p class="subtitle">各服務之間的部署關係與資料流向</p>
+  <div class="diagram-card">
+    <div class="mermaid">
+graph TB
+    subgraph Client["🌐 使用者端"]
+        Browser["瀏覽器"]
+    end
+
+    subgraph Vercel["☁️ Vercel（全球 CDN）"]
+        FE["Next.js 14<br/>shadcn/ui + Tailwind CSS"]
+    end
+
+    subgraph EC2["🖥️ AWS EC2 t4g.small（ap-southeast-1，新加坡）"]
+        subgraph DockerCompose["Docker Compose"]
+            API["FastAPI<br/>Python 3.11<br/>Uvicorn"]
+            DB[("SQLite<br/>Docker named volume")]
+        end
+    end
+
+    subgraph Storage["🗄️ AWS S3（ap-southeast-1）"]
+        S3["Bucket<br/>人像照 / 服裝照 / 結果圖"]
+    end
+
+    subgraph AI["🤖 Fashn.ai（外部 SaaS）"]
+        FashnAPI["tryon-v1.6<br/>AI 推論服務"]
+    end
+
+    Browser -- "HTTPS" --> FE
+    FE -- "HTTPS REST API" --> API
+    API <--> DB
+    API -- "boto3 SDK" --> S3
+    API -- "presigned URL / 呼叫 API" --> FashnAPI
+    FashnAPI -- "直接拉取圖片" --> S3
+
+    style Client fill:#1e293b,stroke:#334155,color:#e2e8f0
+    style Vercel fill:#0f2942,stroke:#1d4ed8,color:#93c5fd
+    style EC2 fill:#1a2a1a,stroke:#16a34a,color:#86efac
+    style DockerCompose fill:#162416,stroke:#15803d,color:#86efac
+    style Storage fill:#2a1f0f,stroke:#b45309,color:#fcd34d
+    style AI fill:#2a1a2e,stroke:#7c3aed,color:#c4b5fd
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- 圖一b：本地開發環境 -->
+<section class="diagram-section">
+  <h2>
+    <span class="icon arch">💻</span>
+    本地開發環境架構
+  </h2>
+  <p class="subtitle">以 MinIO 取代 AWS S3，其他服務相同</p>
+  <div class="diagram-card">
+    <div class="mermaid">
+graph LR
+    subgraph DevMachine["開發者本機 Docker Compose"]
+        FE_DEV["Next.js 14<br/>:3000"]
+        API_DEV["FastAPI<br/>:8000"]
+        DB_DEV[("SQLite<br/>本地檔案")]
+        MINIO["MinIO<br/>S3 相容物件儲存<br/>:9000 API / :9001 UI"]
+    end
+
+    FE_DEV -- "REST API" --> API_DEV
+    API_DEV <--> DB_DEV
+    API_DEV <-- "S3 相容 API (boto3)" --> MINIO
+
+    subgraph External["外部服務"]
+        FashnDev["Fashn.ai API<br/>（相同外部服務）"]
+    end
+
+    API_DEV -- "呼叫推論 API" --> FashnDev
+
+    style DevMachine fill:#1a1f2e,stroke:#3b4a6b,color:#e2e8f0
+    style External fill:#2a1a2e,stroke:#7c3aed,color:#c4b5fd
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- 圖二：試穿流程 Sequence Diagram -->
+<section class="diagram-section">
+  <h2>
+    <span class="icon seq">🔄</span>
+    試穿核心流程（Sequence Diagram）
+  </h2>
+  <p class="subtitle">從使用者提交到顯示結果的完整非同步流程</p>
+  <div class="diagram-card">
+    <div class="mermaid">
+sequenceDiagram
+    actor 使用者
+    participant FE as 前端<br/>(Next.js)
+    participant API as 後端<br/>(FastAPI)
+    participant DB as SQLite
+    participant S3 as AWS S3
+    participant Fashn as Fashn.ai API
+
+    使用者->>FE: 上傳人像照片 + 選擇服裝
+    FE->>API: POST /api/tryon<br/>{ person_image_url, garment_id }
+    API->>DB: 建立 TryonTask<br/>status = 'pending'
+    API-->>FE: { task_id: 42 }
+
+    Note over API: 啟動 BackgroundTask（非同步）
+
+    loop 每 3 秒輪詢
+        FE->>API: GET /api/tryon/42
+        API-->>FE: { status: 'processing' }
+    end
+
+    Note over API,Fashn: BackgroundTask 執行中
+
+    API->>S3: 產生 presigned URL<br/>（人像照 + 服裝照）
+    S3-->>API: presigned URLs
+
+    API->>Fashn: 呼叫 tryon-v1.6<br/>傳入 presigned URLs
+    Fashn->>S3: 直接拉取圖片
+    Fashn-->>API: { fashn_task_id }
+
+    loop 輪詢 Fashn.ai 狀態
+        API->>Fashn: GET 任務狀態
+        Fashn-->>API: status: 'processing'
+    end
+
+    Fashn-->>API: status: 'completed'<br/>result_image_url
+
+    API->>Fashn: 下載結果圖片
+    API->>S3: 上傳結果圖至 S3
+    S3-->>API: 儲存成功
+
+    API->>DB: 更新 TryonTask<br/>status = 'completed'<br/>result_image_url = '...'
+
+    FE->>API: GET /api/tryon/42（輪詢）
+    API-->>FE: { status: 'completed',<br/>  result_image_url: '...' }
+
+    FE-->>使用者: 顯示試穿結果圖 🎉
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- 圖三：任務狀態機 -->
+<section class="diagram-section">
+  <h2>
+    <span class="icon seq">📊</span>
+    TryonTask 狀態機
+  </h2>
+  <p class="subtitle">試穿任務的生命週期狀態轉換</p>
+  <div class="diagram-card">
+    <div class="mermaid">
+stateDiagram-v2
+    [*] --> pending : POST /api/tryon 建立任務
+    pending --> processing : BackgroundTask 開始執行
+    processing --> completed : Fashn.ai 推論成功<br/>結果圖上傳 S3
+    processing --> failed : API 呼叫失敗<br/>或推論逾時
+    completed --> [*]
+    failed --> [*]
+
+    note right of pending
+        前端開始輪詢
+        每 3 秒一次
+    end note
+
+    note right of completed
+        result_image_url 填入
+        前端顯示結果
+    end note
+
+    note right of failed
+        error 欄位記錄原因
+        前端顯示錯誤訊息
+    end note
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- 圖四：資料模型 ER Diagram -->
+<section class="diagram-section">
+  <h2>
+    <span class="icon arch">🗃</span>
+    資料模型（ER Diagram）
+  </h2>
+  <p class="subtitle">三張核心資料表及其關聯</p>
+  <div class="diagram-card">
+    <div class="mermaid">
+erDiagram
+    User {
+        int id PK
+        string email UK
+        string name
+        string hashed_password
+        datetime created_at
+    }
+
+    Garment {
+        int id PK
+        string name
+        string category
+        string image_url
+    }
+
+    TryonTask {
+        int id PK
+        string person_image_url
+        int garment_id FK
+        int user_id FK
+        string status
+        string result_image_url
+        string error
+        datetime created_at
+    }
+
+    User ||--o{ TryonTask : "建立（可匿名）"
+    Garment ||--o{ TryonTask : "被選用"
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>智能試衣平台 · 系統架構文件 · 版本 1.0 · 2026-06-08</p>
+  <p style="margin-top:4px">由 Claude Code 產生 · 請隨架構演進持續更新</p>
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      primaryColor: '#1e3a5f',
+      primaryTextColor: '#e2e8f0',
+      primaryBorderColor: '#3b82f6',
+      lineColor: '#64748b',
+      secondaryColor: '#1e293b',
+      tertiaryColor: '#0f172a',
+      background: '#1a1f2e',
+      mainBkg: '#1e293b',
+      nodeBorder: '#3b82f6',
+      clusterBkg: '#1a1f2e',
+      titleColor: '#f1f5f9',
+      edgeLabelBackground: '#1e293b',
+      actorBorder: '#60a5fa',
+      actorBkg: '#1e3a5f',
+      actorTextColor: '#e2e8f0',
+      actorLineColor: '#64748b',
+      signalColor: '#94a3b8',
+      signalTextColor: '#e2e8f0',
+      labelBoxBkgColor: '#1e293b',
+      labelBoxBorderColor: '#3b82f6',
+      labelTextColor: '#e2e8f0',
+      loopTextColor: '#e2e8f0',
+      noteBorderColor: '#7c3aed',
+      noteBkgColor: '#2d1b69',
+      noteTextColor: '#e2e8f0',
+      activationBorderColor: '#60a5fa',
+      activationBkgColor: '#1e3a5f',
+      sequenceNumberColor: '#e2e8f0',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif',
+      fontSize: '14px'
+    },
+    flowchart: {
+      curve: 'basis',
+      htmlLabels: true
+    },
+    sequence: {
+      diagramMarginX: 20,
+      diagramMarginY: 20,
+      actorMargin: 60,
+      width: 160,
+      height: 60,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 40,
+      mirrorActors: false,
+      useMaxWidth: true
+    }
+  });
+</script>
+</body>
+</html>
