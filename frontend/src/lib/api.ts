@@ -95,6 +95,18 @@ export async function fetchGarments(): Promise<Garment[]> {
   return res.json();
 }
 
+export async function uploadGarment(file: File, name?: string): Promise<Garment> {
+  const formData = new FormData();
+  formData.append("file", file);
+  if (name) formData.append("name", name);
+  const res = await authFetch(`${API_URL}/api/garments/upload`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) throw new Error("Failed to upload garment");
+  return res.json();
+}
+
 // ── Try-on ─────────────────────────────────────────────────────────────────────
 
 export async function createTryon(

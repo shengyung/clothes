@@ -1,93 +1,24 @@
 "use client";
 
-import { useState } from "react";
-
-const BRANDS = [
-  { name: "Nike", abbr: "NIKE" },
-  { name: "adidas", abbr: "ADS" },
-  { name: "ZARA", abbr: "ZARA" },
-  { name: "UNIQLO", abbr: "UQLQ" },
-  { name: "H&M", abbr: "H&M" },
-  { name: "GUCCI", abbr: "GCI" },
-  { name: "North Face", abbr: "TNF" },
-  { name: "Ralph Lauren", abbr: "RL" },
-];
-
-const CATEGORIES = [
-  { name: "上衣", sub: "T-shirt · 襯衫 · 帽T · 背心" },
-  { name: "外套", sub: "夾克 · 大衣 · 羽絨外套" },
-  { name: "褲子", sub: "牛仔 · 休閒褲 · 西裝褲" },
-  { name: "裙子", sub: "短裙 · 長裙 · 洋裝" },
-  { name: "鞋子", sub: "運動鞋 · 休閒鞋" },
-  { name: "配件", sub: "包包 · 帽子 · 飾品" },
-];
-
-interface BrandsSidebarProps {
-  onSelectCategory?: (cat: string) => void;
-}
-
-export default function BrandsSidebar({ onSelectCategory }: BrandsSidebarProps) {
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-
-  function handleCategory(cat: string) {
-    const next = cat === activeCategory ? null : cat;
-    setActiveCategory(next);
-    onSelectCategory?.(next ?? "");
-  }
-
+export default function BrandsSidebar() {
   return (
-    <aside className="bg-white border-r border-[var(--forma-border)] overflow-y-auto flex flex-col">
-      {/* Brands */}
-      <div className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-[0.72rem] font-medium text-[#1D1D1F]">熱門品牌</span>
-          <button className="text-[0.62rem] text-[#6E6E73] hover:text-[#1D1D1F] transition-colors">
-            查看全部 ›
-          </button>
+    <aside className="bg-white border-r border-[var(--forma-border)] flex flex-col items-center justify-center px-6">
+      <div className="text-center">
+        <div className="w-10 h-10 rounded-full border border-[var(--forma-border)] flex items-center justify-center mx-auto mb-4">
+          <svg viewBox="0 0 20 20" fill="none" stroke="rgba(0,0,0,0.25)" strokeWidth="1.4" className="w-5 h-5">
+            <path d="M6 2 3 6v12a2 2 0 002 2h10a2 2 0 002-2V6l-3-4z" />
+            <line x1="3" y1="6" x2="17" y2="6" />
+            <path d="M13 10a3 3 0 01-6 0" />
+          </svg>
         </div>
-        <div className="grid grid-cols-3 gap-1.5">
-          {BRANDS.map((b) => (
-            <button
-              key={b.name}
-              className="border border-[var(--forma-border)] rounded-lg p-2 flex flex-col items-center justify-center gap-0.5 hover:border-[rgba(0,0,0,0.25)] hover:bg-[#FAFAFA] transition-all aspect-square"
-            >
-              <span className="text-[0.58rem] font-bold tracking-widest text-[#1D1D1F]">{b.abbr}</span>
-              <span className="text-[0.5rem] text-[rgba(0,0,0,0.4)] text-center leading-tight">{b.name}</span>
-            </button>
-          ))}
+        <p className="text-[0.75rem] font-medium text-[#1D1D1F] mb-1.5">品牌與分類篩選</p>
+        <p className="text-[0.62rem] text-[rgba(0,0,0,0.38)] leading-relaxed">
+          合作品牌上線後<br />即可在此瀏覽選購
+        </p>
+        <div className="mt-4 inline-block text-[0.55rem] tracking-[0.08em] text-[rgba(0,0,0,0.28)] border border-[rgba(0,0,0,0.12)] px-2.5 py-1 rounded">
+          即將推出
         </div>
       </div>
-
-      <div className="h-px bg-[var(--forma-border)] mx-4" />
-
-      {/* Categories */}
-      <div className="p-4">
-        <div className="text-[0.72rem] font-medium text-[#1D1D1F] mb-3">商品分類</div>
-        <div className="flex flex-col">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.name}
-              onClick={() => handleCategory(cat.name)}
-              className="flex items-center gap-3 py-2.5 text-left group transition-colors hover:bg-[#F5F5F7] px-2"
-            >
-              <div
-                className={`w-0.5 h-7 shrink-0 transition-colors ${
-                  activeCategory === cat.name
-                    ? "bg-[#1D1D1F]"
-                    : "bg-transparent group-hover:bg-[rgba(0,0,0,0.12)]"
-                }`}
-              />
-              <div className="min-w-0">
-                <div className={`text-[0.75rem] font-medium transition-colors ${
-                  activeCategory === cat.name ? "text-[#1D1D1F]" : "text-[rgba(0,0,0,0.55)]"
-                }`}>{cat.name}</div>
-                <div className="text-[0.58rem] text-[rgba(0,0,0,0.35)] truncate mt-0.5">{cat.sub}</div>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
     </aside>
   );
 }

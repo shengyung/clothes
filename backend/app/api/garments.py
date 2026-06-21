@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from sqlmodel import Session, select
 
 from app.db import get_session
 from app.models import Garment
-from app.storage import get_presigned_url
+from app.storage import get_presigned_url, upload_image
 
 router = APIRouter(tags=["garments"])
 
@@ -20,6 +20,26 @@ def list_garments(session: Session = Depends(get_session)):
         }
         for g in garments
     ]
+
+
+@router.post("/garments/upload")
+async def upload_garment(
+    file: UploadFile,
+    name: str = Form(default="自訂服裝"),
+    session: Session = Depends(get_session),
+):
+    contents = await file.read()
+    key = upload_image(contents, content_type=file.content_type or "image/png")
+    garment = Garment(name=name, category="upper_body", image_url=key)
+    session.add(garment)
+    session.commit()
+    session.refresh(garment)
+    return {
+        "id": garment.id,
+        "name": garment.name,
+        "category": garment.category,
+        "image_url": get_presigned_url(garment.image_url),
+    }
 
 
 @router.get("/garments/{garment_id}")
