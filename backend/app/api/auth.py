@@ -2,7 +2,7 @@ import hashlib
 from datetime import date, datetime, timedelta, timezone
 
 import resend
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr
 from sqlmodel import Session, select
 
@@ -17,6 +17,7 @@ from app.auth import (
 )
 from app.config import settings
 from app.db import get_session
+from app.main import limiter
 from app.models import PasswordResetToken, User
 
 router = APIRouter(tags=["auth"])
@@ -117,7 +118,8 @@ def _auth_response(user: User, session: Session) -> AuthResponse:
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/auth/register", response_model=AuthResponse)
-def register(body: RegisterRequest, session: Session = Depends(get_session)):
+@limiter.limit("5/minute")
+def register(request: Request, body: RegisterRequest, session: Session = Depends(get_session)):
     existing = session.exec(select(User).where(User.email == body.email)).first()
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email 已被使用")
@@ -135,7 +137,8 @@ def register(body: RegisterRequest, session: Session = Depends(get_session)):
 
 
 @router.post("/auth/login", response_model=AuthResponse)
-def login(body: LoginRequest, session: Session = Depends(get_session)):
+@limiter.limit("10/minute")
+def login(request: Request, body: LoginRequest, session: Session = Depends(get_session)):
     user = session.exec(select(User).where(User.email == body.email)).first()
     if not user or not user.password_hash or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email 或密碼錯誤")
@@ -143,7 +146,8 @@ def login(body: LoginRequest, session: Session = Depends(get_session)):
 
 
 @router.post("/auth/sso", response_model=AuthResponse)
-def sso_login(body: SsoRequest, session: Session = Depends(get_session)):
+@limiter.limit("10/minute")
+def sso_login(request: Request, body: SsoRequest, session: Session = Depends(get_session)):
     user = session.exec(
         select(User).where(
             User.oauth_provider == body.provider,
@@ -192,7 +196,8 @@ def refresh(body: RefreshRequest, session: Session = Depends(get_session)):
 
 
 @router.post("/auth/forgot-password")
-def forgot_password(body: ForgotPasswordRequest, session: Session = Depends(get_session)):
+@limiter.limit("3/minute")
+def forgot_password(request: Request, body: ForgotPasswordRequest, session: Session = Depends(get_session)):
     user = session.exec(select(User).where(User.email == body.email)).first()
     # 不論是否找到用戶，都回傳相同訊息（防止 email 枚舉攻擊）
     if user:

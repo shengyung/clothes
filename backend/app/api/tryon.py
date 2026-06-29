@@ -1,11 +1,12 @@
 from datetime import date as date_type
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request, UploadFile
 from sqlmodel import Session, select
 
 from app.auth import get_current_user
 from app.db import get_session
 from app.inference import run_tryon
+from app.main import limiter
 from app.models import Garment, TryonTask, User
 from app.storage import get_presigned_url, upload_image
 
@@ -29,7 +30,9 @@ def _task_to_dict(task: TryonTask) -> dict:
 
 
 @router.post("/tryon")
+@limiter.limit("10/minute")
 async def create_tryon(
+    request: Request,
     person_image: UploadFile,
     background_tasks: BackgroundTasks,
     garment_id: str = Form(...),
