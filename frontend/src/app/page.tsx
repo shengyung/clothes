@@ -166,8 +166,6 @@ const FEATURES = [
   },
 ];
 
-const BRANDS = ["Uniqlo", "H&M", "Zara", "Mango", "COS", "& Other Stories"];
-
 const STATS = [
   { num: "30s", label: "平均生成時間" },
   { num: "500+", label: "服裝款式" },

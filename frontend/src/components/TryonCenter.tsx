@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Garment, uploadGarment } from "@/lib/api";
+import { uploadGarment } from "@/lib/api";
 
 const STEPS = [
   {
@@ -69,8 +69,7 @@ export default function TryonCenter({
 }: TryonCenterProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [compareMode, setCompareMode] = useState(false);
-  const [uploadedGarmentPreview, setUploadedGarmentPreview] = useState<string | null>(null);
+const [uploadedGarmentPreview, setUploadedGarmentPreview] = useState<string | null>(null);
   const [isUploadingGarment, setIsUploadingGarment] = useState(false);
   const [garmentUploadError, setGarmentUploadError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
