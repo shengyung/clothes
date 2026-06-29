@@ -38,12 +38,10 @@ def run_tryon(task_id: str, person_key: str, garment_key: str, category: str, ga
 
             # 送出推論請求
             payload = {
-                "model_name": "tryon-v1.6",
+                "model_name": "tryon-max",
                 "inputs": {
                     "model_image": person_url,
-                    "garment_image": garment_url,
-                    "category": {"upper_body": "tops", "lower_body": "bottoms", "full_body": "one-pieces"}.get(category, category) or "auto",
-                    "mode": "quality",
+                    "product_image": garment_url,
                 },
             }
 
