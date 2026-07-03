@@ -15,6 +15,18 @@ from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
 
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    """slowapi's Limiter keeps per-IP counters in process memory, so without
+    resetting it, rapid-fire tests hitting the same endpoint (e.g. login,
+    forgot-password) trip real rate limits and fail with 429s that have
+    nothing to do with the test itself."""
+    from app.main import limiter
+
+    limiter.reset()
+    yield
+
+
 @pytest.fixture()
 def engine():
     """Fresh in-memory SQLite per test — complete isolation."""

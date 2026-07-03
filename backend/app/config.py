@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
     frontend_url: str = "http://localhost:3000"
 
+    # Deploy tracking — set via GIT_SHA env var at container start (see docker-compose.yml)
+    git_sha: str = "unknown"
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 

@@ -8,6 +8,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 
+from app.config import settings
 from app.db import create_db_and_tables
 from app.seed import seed_garments
 
@@ -45,4 +46,4 @@ app.include_router(upload.router, prefix="/api")
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "git_sha": settings.git_sha}

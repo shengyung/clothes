@@ -272,11 +272,13 @@ crontab -e
 ### 更新部署
 
 ```bash
-ssh -i ~/Desktop/clothes-key.pem ec2-user@18.138.212.224
+ssh -i ~/Desktop/clothes-key.pem ec2-user@<EC2 public IP>  # AWS Console → EC2 → clothes-backend 查目前 IP
 cd clothes
-GIT_SSH_COMMAND='ssh -i ~/.ssh/deploy_key' git pull origin develop
-docker-compose -f docker-compose.prod.yml up -d --build
+GIT_SSH_COMMAND='ssh -i ~/.ssh/deploy_key' git pull origin main
+GIT_SHA=$(git rev-parse --short HEAD) docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
+
+部署完用 `curl http://localhost:8000/health` 確認回傳的 `git_sha` 跟 `git rev-parse --short HEAD` 一致，不用每次都 SSH 進去對 commit。
 
 ---
 
