@@ -1,8 +1,7 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from sqlmodel import Field, SQLModel
-
 
 
 class User(SQLModel, table=True):
@@ -14,13 +13,15 @@ class User(SQLModel, table=True):
     oauth_provider: str | None = None      # "google" | "line" | "facebook" | "apple"
     oauth_provider_id: str | None = None   # provider 給的唯一 ID
     is_admin: bool = Field(default=False)
+    daily_credits_used: int = Field(default=0)
+    credits_reset_date: date | None = Field(default=None)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class Garment(SQLModel, table=True):
     id: str = Field(default_factory=lambda: uuid.uuid4().hex, primary_key=True)
     name: str
-    category: str = "upper_body"
+    category: str = "tops"
     image_url: str
 
 

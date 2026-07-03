@@ -34,3 +34,6 @@ minio_data/
 .claude/
 
 CLAUDE.md
+
+# cred
+credentials

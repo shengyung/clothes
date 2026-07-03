@@ -13,12 +13,14 @@ def _get_client(for_presign: bool = False):
     - use_s3=False → MinIO（本地開發），for_presign 時改用 public endpoint
     """
     if settings.use_s3:
+        # Use regional endpoint + virtual-hosted style to avoid cross-region redirect (presign breaks on redirect)
         return boto3.client(
             "s3",
             aws_access_key_id=settings.aws_access_key_id,
             aws_secret_access_key=settings.aws_secret_access_key,
             region_name=settings.s3_region,
-            config=Config(signature_version="s3v4"),
+            endpoint_url=f"https://s3-{settings.s3_region}.amazonaws.com",
+            config=Config(signature_version="s3v4", s3={"addressing_style": "virtual"}),
         )
     else:
         endpoint = settings.minio_public_endpoint if for_presign else settings.minio_endpoint
@@ -48,11 +50,11 @@ def ensure_bucket():
         client.create_bucket(Bucket=_bucket())
 
 
-def upload_image(file_bytes: bytes, content_type: str = "image/png") -> str:
+def upload_image(file_bytes: bytes, content_type: str = "image/png", prefix: str = "images") -> str:
     """Upload image bytes to storage and return the object key."""
     client = _get_client()
     ensure_bucket()
-    key = f"images/{uuid.uuid4().hex}.png"
+    key = f"{prefix}/{uuid.uuid4().hex}.png"
     client.put_object(
         Bucket=_bucket(),
         Key=key,

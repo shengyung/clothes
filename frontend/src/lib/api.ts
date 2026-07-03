@@ -33,6 +33,7 @@ export interface AuthUser {
   avatar_url: string | null;
   is_admin: boolean;
   oauth_provider: string | null;
+  credits_remaining: number;
 }
 
 export interface AuthResponse {
@@ -95,12 +96,24 @@ export async function fetchGarments(): Promise<Garment[]> {
   return res.json();
 }
 
+export async function uploadGarment(file: File, name?: string): Promise<Garment> {
+  const formData = new FormData();
+  formData.append("file", file);
+  if (name) formData.append("name", name);
+  const res = await authFetch(`${API_URL}/api/garments/upload`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) throw new Error("Failed to upload garment");
+  return res.json();
+}
+
 // ── Try-on ─────────────────────────────────────────────────────────────────────
 
 export async function createTryon(
   personImage: File,
   garmentId: string
-): Promise<{ task_id: string; status: string }> {
+): Promise<{ task_id: string; status: string; credits_remaining: number }> {
   const formData = new FormData();
   formData.append("person_image", personImage);
   formData.append("garment_id", garmentId);
@@ -109,6 +122,13 @@ export async function createTryon(
     method: "POST",
     body: formData,
   });
+  if (res.status === 429) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "今日試穿次數已達上限，明天再來");
+  }
+  if (res.status === 401) {
+    throw new Error("請先登入才能使用試穿功能");
+  }
   if (!res.ok) throw new Error("Failed to create tryon task");
   return res.json();
 }

@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  scroll-behavior: smooth;
+}
+
 /* ── ShapeOnYou Design System ── */
 :root {
   --cream: #1D1D1F;

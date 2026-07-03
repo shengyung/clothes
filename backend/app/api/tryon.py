@@ -1,15 +1,18 @@
-from typing import Optional
+from datetime import date as date_type
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request, UploadFile
 from sqlmodel import Session, select
 
-from app.auth import get_optional_user, get_current_user
+from app.auth import get_current_user
 from app.db import get_session
 from app.inference import run_tryon
+from app.main import limiter
 from app.models import Garment, TryonTask, User
 from app.storage import get_presigned_url, upload_image
 
 router = APIRouter(tags=["tryon"])
+
+DAILY_CREDITS = 5
 
 
 def _task_to_dict(task: TryonTask) -> dict:
@@ -27,24 +30,37 @@ def _task_to_dict(task: TryonTask) -> dict:
 
 
 @router.post("/tryon")
+@limiter.limit("10/minute")
 async def create_tryon(
+    request: Request,
     person_image: UploadFile,
     background_tasks: BackgroundTasks,
     garment_id: str = Form(...),
     session: Session = Depends(get_session),
-    current_user: Optional[User] = Depends(get_optional_user),
+    current_user: User = Depends(get_current_user),
 ):
     garment = session.get(Garment, garment_id)
     if not garment:
         raise HTTPException(status_code=404, detail="Garment not found")
 
+    # Daily credit check
+    today = date_type.today()
+    if current_user.credits_reset_date != today:
+        current_user.daily_credits_used = 0
+        current_user.credits_reset_date = today
+    if current_user.daily_credits_used >= DAILY_CREDITS:
+        raise HTTPException(status_code=429, detail="今日試穿次數已達上限，明天再來")
+    current_user.daily_credits_used += 1
+    session.add(current_user)
+    session.flush()
+
     person_bytes = await person_image.read()
-    person_key = upload_image(person_bytes, content_type=person_image.content_type or "image/png")
+    person_key = upload_image(person_bytes, content_type=person_image.content_type or "image/png", prefix="person-images")
 
     task = TryonTask(
         person_image_url=person_key,
         garment_id=garment_id,
-        user_id=current_user.id if current_user else None,
+        user_id=current_user.id,
     )
     session.add(task)
     session.commit()
@@ -52,7 +68,11 @@ async def create_tryon(
 
     background_tasks.add_task(run_tryon, task.id, person_key, garment.image_url, garment.category, garment.name)
 
-    return {"task_id": task.id, "status": task.status}
+    return {
+        "task_id": task.id,
+        "status": task.status,
+        "credits_remaining": DAILY_CREDITS - current_user.daily_credits_used,
+    }
 
 
 @router.get("/tryon/history")

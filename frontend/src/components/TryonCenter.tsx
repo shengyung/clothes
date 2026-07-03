@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { fetchGarments, Garment } from "@/lib/api";
-
-const TABS = ["熱門", "最新", "價格"];
+import { useRef, useState } from "react";
+import { uploadGarment } from "@/lib/api";
 
 const STEPS = [
   {
@@ -28,7 +26,7 @@ const STEPS = [
   },
   {
     num: 3,
-    label: "AI 試穿",
+    label: "生成試穿",
     icon: (
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
         <circle cx="10" cy="10" r="7" />
@@ -48,6 +46,8 @@ const STEPS = [
   },
 ];
 
+const DAILY_CREDITS = 5;
+
 interface TryonCenterProps {
   personImage: File | null;
   onImageChange: (file: File | null) => void;
@@ -55,6 +55,7 @@ interface TryonCenterProps {
   onSelectGarment: (id: string) => void;
   onTryOn: () => void;
   onReset: () => void;
+  creditsRemaining: number | null;
 }
 
 export default function TryonCenter({
@@ -64,21 +65,15 @@ export default function TryonCenter({
   onSelectGarment,
   onTryOn,
   onReset,
+  creditsRemaining,
 }: TryonCenterProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [garments, setGarments] = useState<Garment[]>([]);
-  const [loadingGarments, setLoadingGarments] = useState(true);
-  const [activeTab, setActiveTab] = useState("熱門");
-  const [compareMode, setCompareMode] = useState(false);
+const [uploadedGarmentPreview, setUploadedGarmentPreview] = useState<string | null>(null);
+  const [isUploadingGarment, setIsUploadingGarment] = useState(false);
+  const [garmentUploadError, setGarmentUploadError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    fetchGarments()
-      .then(setGarments)
-      .catch(() => {})
-      .finally(() => setLoadingGarments(false));
-  }, []);
+  const garmentInputRef = useRef<HTMLInputElement>(null);
 
   function handleFile(file: File) {
     if (!file.type.startsWith("image/")) return;
@@ -95,13 +90,26 @@ export default function TryonCenter({
     onReset();
   }
 
-  function handleRandomOutfit() {
-    if (garments.length === 0) return;
-    const random = garments[Math.floor(Math.random() * garments.length)];
-    onSelectGarment(random.id);
+  async function handleGarmentFile(file: File) {
+    if (!file.type.startsWith("image/")) return;
+    setGarmentUploadError(null);
+    setIsUploadingGarment(true);
+    if (uploadedGarmentPreview) URL.revokeObjectURL(uploadedGarmentPreview);
+    setUploadedGarmentPreview(URL.createObjectURL(file));
+    try {
+      const garment = await uploadGarment(file);
+      onSelectGarment(garment.id);
+    } catch {
+      setGarmentUploadError("上傳失敗，請再試一次");
+      setUploadedGarmentPreview(null);
+      onSelectGarment("");
+    } finally {
+      setIsUploadingGarment(false);
+    }
   }
 
-  const canTryOn = !!personImage && !!selectedGarmentId;
+  const outOfCredits = creditsRemaining !== null && creditsRemaining === 0;
+  const canTryOn = !!personImage && !!selectedGarmentId && !outOfCredits;
   const currentStep = !personImage ? 1 : !selectedGarmentId ? 2 : 3;
 
   return (
@@ -128,20 +136,7 @@ export default function TryonCenter({
                 <circle cx="10" cy="10" r="8" />
                 <path d="M10 6v5l3 2" />
               </svg>
-              <span className="text-[0.78rem] font-medium text-[#1D1D1F]">AI 虛擬試穿</span>
-            </div>
-            <div className="flex gap-1.5">
-              <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/70 transition-colors text-[rgba(0,0,0,0.4)] hover:text-[#1D1D1F]">
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
-                  <circle cx="5" cy="5" r="3" /><circle cx="11" cy="11" r="3" />
-                  <path d="M8 2l6 6-6 6M2 8h12" />
-                </svg>
-              </button>
-              <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/70 transition-colors text-[rgba(0,0,0,0.4)] hover:text-[#1D1D1F]">
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
-                  <path d="M2 11v3h3M14 5V2h-3M14 11v3h-3M2 5V2h3" />
-                </svg>
-              </button>
+              <span className="text-[0.78rem] font-medium text-[#1D1D1F]">虛擬試穿</span>
             </div>
           </div>
 
@@ -163,8 +158,7 @@ export default function TryonCenter({
               </div>
             ) : (
               <div
-                className={`flex flex-col items-center justify-center gap-4 cursor-pointer w-full h-full`}
-                onClick={() => inputRef.current?.click()}
+                className="flex flex-col items-center justify-center gap-4 w-full h-full"
                 onDragOver={(e) => {
                   e.preventDefault();
                   setDragging(true);
@@ -177,21 +171,24 @@ export default function TryonCenter({
                   if (file) handleFile(file);
                 }}
               >
-                <div
-                  className={`w-36 h-48 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-3 transition-colors bg-white/60 ${
+                <button
+                  onClick={() => inputRef.current?.click()}
+                  className={`w-52 h-72 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-4 transition-colors bg-white/60 ${
                     dragging
                       ? "border-[#1D1D1F] bg-white/80"
                       : "border-[rgba(0,0,0,0.15)] hover:border-[rgba(0,0,0,0.3)]"
                   }`}
                 >
-                  <svg viewBox="0 0 48 48" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="1.5" className="w-10 h-10">
-                    <path d="M38.5 6.5 30 2a8 8 0 0 1-16 0L5.5 6.5a4 4 0 0 0-2.7 4.46l1.15 7.14a2 2 0 0 0 1.97 1.7H10v20a4 4 0 0 0 4 4h20a4 4 0 0 0 4-4V19.8h4.08a2 2 0 0 0 1.97-1.7l1.15-7.14a4 4 0 0 0-2.7-4.46z" />
+                  <svg viewBox="0 0 48 48" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="1.4" className="w-12 h-12">
+                    <circle cx="24" cy="14" r="8" />
+                    <path d="M8 44c0-8.84 7.16-16 16-16s16 7.16 16 16" />
                   </svg>
-                  <span className="text-[0.6rem] text-[rgba(0,0,0,0.3)] text-center leading-relaxed">
-                    無完整身照<br />點選上傳
-                  </span>
-                </div>
-                <p className="text-[0.72rem] text-[rgba(0,0,0,0.4)]">點擊或拖曳全身照片至此</p>
+                  <div className="text-center px-4">
+                    <p className="text-[0.75rem] text-[rgba(0,0,0,0.5)] font-medium">上傳全身照片</p>
+                    <p className="text-[0.62rem] text-[rgba(0,0,0,0.3)] mt-1.5 leading-relaxed">正面站姿<br />背景盡量乾淨</p>
+                  </div>
+                </button>
+                <p className="text-[0.68rem] text-[rgba(0,0,0,0.3)]">點擊選取，或將照片拖曳至此</p>
               </div>
             )}
           </div>
@@ -204,30 +201,20 @@ export default function TryonCenter({
             >
               重設
             </button>
-            <button
-              onClick={handleRandomOutfit}
-              className="flex items-center gap-2 px-4 py-2 text-[0.7rem] tracking-[0.05em] text-[#6E6E73] border border-[rgba(0,0,0,0.12)] rounded-lg hover:border-[rgba(0,0,0,0.3)] hover:text-[#1D1D1F] transition-all bg-white/80 backdrop-blur-sm"
-            >
+            <div className="flex items-center gap-2 px-4 py-2 text-[0.7rem] text-[rgba(0,0,0,0.28)] border border-[rgba(0,0,0,0.08)] rounded-lg bg-white/80 backdrop-blur-sm cursor-not-allowed select-none">
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
                 <path d="M1 1l14 14M15 1l-4 4M1 15l4-4" />
                 <path d="M11 1h4v4M1 11v4h4" />
               </svg>
               隨機搭配
-            </button>
+              <span className="text-[0.55rem] tracking-[0.06em] text-[rgba(0,0,0,0.22)] border border-[rgba(0,0,0,0.12)] px-1.5 py-0.5 rounded">即將推出</span>
+            </div>
             <div className="flex items-center gap-2 ml-auto">
-              <span className="text-[0.68rem] text-[rgba(0,0,0,0.4)]">對比模式</span>
-              <button
-                onClick={() => setCompareMode(!compareMode)}
-                className={`w-9 h-5 rounded-full transition-colors relative shrink-0 ${
-                  compareMode ? "bg-[#1D1D1F]" : "bg-[rgba(0,0,0,0.15)]"
-                }`}
-              >
-                <div
-                  className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
-                    compareMode ? "translate-x-4" : "translate-x-0.5"
-                  }`}
-                />
-              </button>
+              <span className="text-[0.68rem] text-[rgba(0,0,0,0.28)]">對比模式</span>
+              <div className="w-9 h-5 rounded-full bg-[rgba(0,0,0,0.08)] relative shrink-0 cursor-not-allowed">
+                <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm" />
+              </div>
+              <span className="text-[0.55rem] tracking-[0.06em] text-[rgba(0,0,0,0.22)] border border-[rgba(0,0,0,0.12)] px-1.5 py-0.5 rounded">即將推出</span>
             </div>
           </div>
         </div>
@@ -235,69 +222,98 @@ export default function TryonCenter({
         {/* Product panel */}
         <div className="w-[220px] border-l border-[var(--forma-border)] bg-white flex flex-col overflow-hidden">
           <div className="px-4 py-3 border-b border-[var(--forma-border)] shrink-0">
-            <div className="text-[0.78rem] font-medium text-[#1D1D1F] mb-2">上衣推薦</div>
-            <div className="flex border border-[var(--forma-border)] rounded-lg overflow-hidden">
-              {TABS.map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`flex-1 py-1.5 text-[0.62rem] tracking-[0.03em] transition-colors ${
-                    activeTab === tab
-                      ? "bg-[#1D1D1F] text-white"
-                      : "text-[#6E6E73] hover:bg-[#F5F5F7]"
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
+            <div className="text-[0.78rem] font-medium text-[#1D1D1F]">服裝照片</div>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
-            {loadingGarments ? (
-              <div className="flex items-center justify-center h-20 text-[0.72rem] text-[rgba(0,0,0,0.35)]">
-                載入中...
-              </div>
-            ) : garments.length === 0 ? (
-              <div className="flex items-center justify-center h-20 text-[0.72rem] text-[rgba(0,0,0,0.35)]">
-                暫無商品
+          <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
+            <input
+              ref={garmentInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleGarmentFile(file);
+                e.target.value = "";
+              }}
+            />
+
+            {uploadedGarmentPreview ? (
+              <div className="relative rounded-xl overflow-hidden border border-[rgba(0,0,0,0.1)]">
+                <img
+                  src={uploadedGarmentPreview}
+                  alt="上傳的服裝"
+                  className="w-full aspect-[3/4] object-cover"
+                />
+                {isUploadingGarment && (
+                  <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
+                    <span className="text-[0.7rem] text-[rgba(0,0,0,0.5)]">上傳中...</span>
+                  </div>
+                )}
+                {!isUploadingGarment && (
+                  <button
+                    onClick={() => garmentInputRef.current?.click()}
+                    className="absolute top-2 right-2 bg-black/10 backdrop-blur-sm text-[#1D1D1F] px-2 py-1 text-[0.6rem] tracking-[0.05em] uppercase rounded-lg border border-black/10 hover:bg-black/20 transition-colors"
+                  >
+                    重新上傳
+                  </button>
+                )}
               </div>
             ) : (
-              <div className="p-2 flex flex-col gap-2">
-                {garments.map((g) => (
-                  <button
-                    key={g.id}
-                    onClick={() => onSelectGarment(g.id)}
-                    className={`w-full text-left border rounded-xl overflow-hidden transition-all hover:border-[rgba(0,0,0,0.2)] ${
-                      selectedGarmentId === g.id
-                        ? "border-[#1D1D1F] ring-1 ring-[#1D1D1F]"
-                        : "border-[var(--forma-border)]"
-                    }`}
-                  >
-                    <div className="aspect-[4/3] bg-[#F5F5F7] overflow-hidden">
-                      {g.image_url ? (
-                        <img src={g.image_url} alt={g.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-2xl opacity-30">👕</div>
-                      )}
+              <button
+                onClick={() => garmentInputRef.current?.click()}
+                disabled={isUploadingGarment}
+                className="w-full flex flex-col items-center justify-center gap-3 border-2 border-dashed border-[rgba(0,0,0,0.15)] rounded-xl py-10 hover:border-[rgba(0,0,0,0.3)] transition-colors disabled:cursor-not-allowed"
+              >
+                {isUploadingGarment ? (
+                  <span className="text-[0.72rem] text-[rgba(0,0,0,0.4)]">上傳中...</span>
+                ) : (
+                  <>
+                    <svg viewBox="0 0 48 48" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="1.5" className="w-10 h-10">
+                      <path d="M38.5 6.5 30 2a8 8 0 0 1-16 0L5.5 6.5a4 4 0 0 0-2.7 4.46l1.15 7.14a2 2 0 0 0 1.97 1.7H10v20a4 4 0 0 0 4 4h20a4 4 0 0 0 4-4V19.8h4.08a2 2 0 0 0 1.97-1.7l1.15-7.14a4 4 0 0 0-2.7-4.46z" />
+                    </svg>
+                    <div className="text-center px-2">
+                      <p className="text-[0.68rem] text-[rgba(0,0,0,0.5)]">點擊上傳服裝照片</p>
+                      <p className="text-[0.58rem] text-[rgba(0,0,0,0.3)] mt-1">建議正面白底</p>
                     </div>
-                    <div className="p-2">
-                      <div className="text-[0.68rem] font-medium text-[#1D1D1F] truncate">{g.name}</div>
-                      <div className="text-[0.58rem] text-[rgba(0,0,0,0.4)] mt-0.5">{g.category}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
+                  </>
+                )}
+              </button>
+            )}
+
+            {garmentUploadError && (
+              <p className="text-[0.65rem] text-red-500 text-center">{garmentUploadError}</p>
             )}
           </div>
 
-          <div className="p-3 border-t border-[var(--forma-border)] shrink-0">
+          <div className="p-3 border-t border-[var(--forma-border)] shrink-0 flex flex-col gap-2">
+            {/* Credits indicator */}
+            {creditsRemaining !== null && (
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[0.6rem] text-[rgba(0,0,0,0.35)] tracking-[0.03em]">今日剩餘次數</span>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: DAILY_CREDITS }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-2 h-2 rounded-full transition-colors ${
+                        i < creditsRemaining
+                          ? "bg-[#1D1D1F]"
+                          : "bg-[rgba(0,0,0,0.12)]"
+                      }`}
+                    />
+                  ))}
+                  <span className={`text-[0.6rem] ml-1 font-medium ${outOfCredits ? "text-red-500" : "text-[rgba(0,0,0,0.45)]"}`}>
+                    {creditsRemaining}/{DAILY_CREDITS}
+                  </span>
+                </div>
+              </div>
+            )}
             <button
               onClick={onTryOn}
               disabled={!canTryOn}
               className="w-full bg-[#1D1D1F] text-white py-2.5 text-[0.72rem] tracking-[0.08em] uppercase rounded-lg hover:bg-[#6E6E73] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              {!personImage ? "請先上傳照片" : !selectedGarmentId ? "請選擇服裝" : "✦ 立即試穿"}
+              {outOfCredits ? "今日次數已達上限" : !personImage ? "請先上傳照片" : !selectedGarmentId ? "請上傳服裝" : "立即試穿"}
             </button>
           </div>
         </div>
