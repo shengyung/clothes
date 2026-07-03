@@ -24,9 +24,9 @@ services:
     build:
       context: ./frontend
       args:
-        - NEXT_PUBLIC_API_URL=http://18.138.212.224
+        - NEXT_PUBLIC_API_URL=https://shapeonyou.io
     environment:
-      - NEXTAUTH_URL=http://18.138.212.224
+      - NEXTAUTH_URL=https://shapeonyou.io
 
   minio:
     image: alpine
