@@ -1,9 +1,17 @@
+import time
 import uuid
 
 import boto3
 from botocore.config import Config
 
 from app.config import settings
+
+# Presigned URLs embed a fresh signature/timestamp on every call, so regenerating
+# one per API request makes browsers treat the same image as a new resource each
+# time and defeats HTTP caching. Reuse the same URL for a key until it's close to
+# expiring so repeat page loads can hit the browser cache.
+_PRESIGN_REFRESH_MARGIN = 300  # seconds before expiry to force regeneration
+_presign_cache: dict[str, tuple[str, float]] = {}
 
 
 def _get_client(for_presign: bool = False):
@@ -60,15 +68,28 @@ def upload_image(file_bytes: bytes, content_type: str = "image/png", prefix: str
         Key=key,
         Body=file_bytes,
         ContentType=content_type,
+        # Keys are random uuids and never overwritten, so the content behind a
+        # given key is immutable — safe to let browsers cache it indefinitely.
+        CacheControl="public, max-age=31536000, immutable",
     )
     return key
 
 
 def get_presigned_url(key: str, expires: int = 3600) -> str:
-    """Generate a presigned URL for browser access."""
+    """Generate a presigned URL for browser access, reusing a cached URL for the
+    same key while it still has enough validity left to be worth caching."""
+    now = time.monotonic()
+    cached = _presign_cache.get(key)
+    if cached is not None:
+        url, generated_at = cached
+        if now - generated_at < expires - _PRESIGN_REFRESH_MARGIN:
+            return url
+
     client = _get_client(for_presign=True)
-    return client.generate_presigned_url(
+    url = client.generate_presigned_url(
         "get_object",
         Params={"Bucket": _bucket(), "Key": key},
         ExpiresIn=expires,
     )
+    _presign_cache[key] = (url, now)
+    return url
