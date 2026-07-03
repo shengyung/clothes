@@ -20,17 +20,15 @@ FAKE_IMAGE = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100  # minimal fake PNG bytes
 
 
 class TestCreateTryon:
-    def test_create_unauthenticated_succeeds(self, client, garment):
+    def test_create_unauthenticated_returns_401(self, client, garment):
+        # /api/tryon requires login so daily credit limits can be enforced per account.
         with patch("app.api.tryon.run_tryon"):
             resp = client.post(
                 "/api/tryon",
                 data={"garment_id": garment.id},
                 files={"person_image": ("photo.jpg", io.BytesIO(FAKE_IMAGE), "image/jpeg")},
             )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "task_id" in data
-        assert data["status"] == "pending"
+        assert resp.status_code == 401
 
     def test_create_authenticated_links_user(self, client, garment, registered_user, auth_headers):
         with patch("app.api.tryon.run_tryon"):
@@ -42,22 +40,24 @@ class TestCreateTryon:
             )
         assert resp.status_code == 200
 
-    def test_nonexistent_garment_returns_404(self, client):
+    def test_nonexistent_garment_returns_404(self, client, registered_user, auth_headers):
         resp = client.post(
             "/api/tryon",
             data={"garment_id": "nonexistent-garment"},
             files={"person_image": ("photo.jpg", io.BytesIO(FAKE_IMAGE), "image/jpeg")},
+            headers=auth_headers,
         )
         assert resp.status_code == 404
 
-    def test_missing_person_image_returns_422(self, client, garment):
-        resp = client.post("/api/tryon", data={"garment_id": garment.id})
+    def test_missing_person_image_returns_422(self, client, garment, registered_user, auth_headers):
+        resp = client.post("/api/tryon", data={"garment_id": garment.id}, headers=auth_headers)
         assert resp.status_code == 422
 
-    def test_missing_garment_id_returns_422(self, client):
+    def test_missing_garment_id_returns_422(self, client, registered_user, auth_headers):
         resp = client.post(
             "/api/tryon",
             files={"person_image": ("photo.jpg", io.BytesIO(FAKE_IMAGE), "image/jpeg")},
+            headers=auth_headers,
         )
         assert resp.status_code == 422
 
