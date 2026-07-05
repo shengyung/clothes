@@ -36,20 +36,20 @@ export default function Navbar({ variant = "site" }: NavbarProps) {
 
   const logo = (
     <Link href="/" className="no-underline shrink-0">
-      <span className="font-serif text-[1.3rem] font-light tracking-[0.15em] text-[#1D1D1F]">
+      <span className="font-serif text-[1.04rem] md:text-[1.3rem] font-light tracking-[0.15em] text-[#1D1D1F]">
         ShapeOn<span className="text-[#6E6E73]">You</span>
       </span>
     </Link>
   );
 
   const navLinks = (
-    <ul className="flex items-center gap-5 list-none">
+    <ul className="flex flex-nowrap items-center gap-2 md:gap-5 list-none">
       {NAV_LINKS.map(({ label, href, disabled }) => {
         const isActive = pathname === href;
         if (disabled) {
           return (
             <li key={label}>
-              <span className="text-[0.72rem] tracking-[0.04em] text-[rgba(0,0,0,0.25)] cursor-not-allowed select-none">
+              <span className="text-[13px] md:text-[0.72rem] tracking-[0.04em] text-[rgba(0,0,0,0.25)] cursor-not-allowed select-none whitespace-nowrap">
                 {label}
               </span>
             </li>
@@ -59,7 +59,7 @@ export default function Navbar({ variant = "site" }: NavbarProps) {
           <li key={label}>
             <Link
               href={href}
-              className={`text-[0.72rem] tracking-[0.04em] no-underline transition-colors duration-200 ${
+              className={`text-[13px] md:text-[0.72rem] tracking-[0.04em] no-underline transition-colors duration-200 whitespace-nowrap ${
                 isActive
                   ? "text-[#1D1D1F] font-medium"
                   : "text-[rgba(0,0,0,0.45)] hover:text-[#1D1D1F]"
@@ -76,12 +76,12 @@ export default function Navbar({ variant = "site" }: NavbarProps) {
   if (variant === "site") {
     return (
       <nav
-        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-5 bg-[rgba(245,245,247,0.88)] backdrop-blur-md border-b border-[rgba(0,0,0,0.05)]"
+        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-3 py-2 md:px-8 md:py-5 bg-[rgba(245,245,247,0.88)] backdrop-blur-md border-b border-[rgba(0,0,0,0.05)]"
         role="navigation"
         aria-label="主選單"
       >
         {logo}
-        <div className="flex items-center gap-6 ml-8">
+        <div className="flex items-center gap-2 ml-2 md:gap-6 md:ml-8">
           {navLinks}
         </div>
         <div className="flex items-center gap-4 ml-auto">
@@ -113,7 +113,7 @@ export default function Navbar({ variant = "site" }: NavbarProps) {
           ) : (
             <Link
               href="/login"
-              className="flex items-center px-4 py-2 bg-[#1D1D1F] text-white rounded-lg text-[0.7rem] tracking-[0.05em] no-underline hover:bg-[#6E6E73] transition-colors"
+              className="flex items-center px-2 py-1.5 md:px-4 md:py-2 bg-[#1D1D1F] text-white rounded-lg text-[0.7rem] tracking-[0.05em] no-underline hover:bg-[#6E6E73] transition-colors"
             >
               登入
             </Link>
@@ -126,12 +126,12 @@ export default function Navbar({ variant = "site" }: NavbarProps) {
   // variant === "app" — static, full toolbar
   return (
     <nav
-      className="flex items-center gap-4 px-6 py-3 border-b border-[var(--forma-border)] bg-white shrink-0 z-10"
+      className="flex items-center gap-4 px-3 py-2 md:px-6 md:py-3 border-b border-[var(--forma-border)] bg-white shrink-0 z-10"
       role="navigation"
       aria-label="應用程式導航"
     >
       {logo}
-      <div className="ml-3">
+      <div className="ml-1 md:ml-3">
         {navLinks}
       </div>
 
@@ -165,7 +165,7 @@ export default function Navbar({ variant = "site" }: NavbarProps) {
         ) : (
           <Link
             href="/login"
-            className="flex items-center px-4 py-2 bg-[#1D1D1F] text-white rounded-lg text-[0.7rem] tracking-[0.05em] no-underline hover:bg-[#6E6E73] transition-colors"
+            className="flex items-center px-2 py-1.5 md:px-4 md:py-2 bg-[#1D1D1F] text-white rounded-lg text-[0.7rem] tracking-[0.05em] no-underline hover:bg-[#6E6E73] transition-colors"
           >
             登入
           </Link>
