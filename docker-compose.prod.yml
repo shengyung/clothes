@@ -10,6 +10,7 @@ services:
       # SQLite 檔案要落在下面掛載的 sqlite_data volume（/app/data）裡，
       # 否則重新部署 container 時資料會整個消失（見 docs/architecture.md 的已知問題記錄）。
       - DATABASE_URL=sqlite:////app/data/tryon.db
+      - CORS_ORIGINS=https://shapeonyou.io
     volumes:
       - ./backend/app:/app/app
       - ./backend/scripts:/app/scripts

@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from sqlmodel import Session, select
 
+from app.auth import get_current_user
 from app.db import get_session
-from app.models import Garment
+from app.models import Garment, User
 from app.storage import get_presigned_url, upload_image
+from app.validation import validate_image_upload
 
 router = APIRouter(tags=["garments"])
 
@@ -27,8 +29,10 @@ async def upload_garment(
     file: UploadFile,
     name: str = Form(default="自訂服裝"),
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ):
     contents = await file.read()
+    validate_image_upload(file.content_type, len(contents))
     key = upload_image(contents, content_type=file.content_type or "image/png", prefix="garment-images")
     garment = Garment(name=name, category="tops", image_url=key)
     session.add(garment)
