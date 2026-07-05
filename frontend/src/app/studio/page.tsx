@@ -7,12 +7,14 @@ import BrandsSidebar from "@/components/BrandsSidebar";
 import TryonCenter from "@/components/TryonCenter";
 import OutfitRecords from "@/components/OutfitRecords";
 import TryonModal from "@/components/TryonModal";
+import MobileTabBar, { MobileTab } from "@/components/MobileTabBar";
 import { getMe, TryonResult } from "@/lib/api";
 
 export default function StudioPage() {
   const router = useRouter();
   const [personImage, setPersonImage] = useState<File | null>(null);
   const [selectedGarmentId, setSelectedGarmentId] = useState<string | null>(null);
+  const [mobileTab, setMobileTab] = useState<MobileTab>("tryon");
   const [showTryonModal, setShowTryonModal] = useState(false);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [outfitRefreshTrigger, setOutfitRefreshTrigger] = useState(0);
@@ -60,7 +62,8 @@ export default function StudioPage() {
     <>
       <Navbar variant="app" />
 
-      <main className="flex-1 grid grid-cols-[260px_1fr_280px] overflow-hidden min-h-0">
+      {/* Desktop layout — 三欄，md 以上顯示 */}
+      <main className="hidden md:grid flex-1 md:flex-1 grid-cols-[260px_1fr_280px] overflow-hidden min-h-0">
         <BrandsSidebar />
         <TryonCenter
           personImage={personImage}
@@ -73,6 +76,30 @@ export default function StudioPage() {
         />
         <OutfitRecords refreshTrigger={outfitRefreshTrigger} />
       </main>
+
+      {/* Mobile layout — 單欄，md 以下顯示 */}
+      <div className="md:hidden flex-1 flex flex-col overflow-hidden min-h-0">
+        {mobileTab === "tryon" && (
+          <TryonCenter
+            personImage={personImage}
+            onImageChange={setPersonImage}
+            selectedGarmentId={selectedGarmentId}
+            onSelectGarment={setSelectedGarmentId}
+            onTryOn={handleTryOn}
+            onReset={handleReset}
+            creditsRemaining={creditsRemaining}
+          />
+        )}
+        {mobileTab === "brands" && <BrandsSidebar />}
+        {mobileTab === "records" && <OutfitRecords refreshTrigger={outfitRefreshTrigger} />}
+      </div>
+
+      {/* Mobile Tab Bar */}
+      <MobileTabBar
+        className="md:hidden"
+        activeTab={mobileTab}
+        onChange={setMobileTab}
+      />
 
       {showTryonModal && selectedGarmentId && personImage && (
         <TryonModal
