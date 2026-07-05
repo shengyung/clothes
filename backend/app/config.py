@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24   # 1 天
     refresh_token_expire_days: int = 30
 
+    # CORS — 逗號分隔的白名單，生產環境需覆蓋成實際網域（見 docker-compose.prod.yml）
+    cors_origins: str = "http://localhost:3000"
+
     # Email (Resend)
     resend_api_key: str = ""
     frontend_url: str = "http://localhost:3000"
