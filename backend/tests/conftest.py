@@ -65,6 +65,7 @@ def client(session):
     with (
         patch("app.api.tryon.upload_image", return_value="images/test-key.png"),
         patch("app.api.tryon.get_presigned_url", return_value="http://test.example.com/image.png"),
+        patch("app.api.tryon.delete_image"),
         patch("app.api.garments.get_presigned_url", return_value="http://test.example.com/image.png"),
         patch("app.api.garments.upload_image", return_value="garment-images/test-key.png"),
         patch("app.api.upload.upload_image", return_value="images/test-key.png"),

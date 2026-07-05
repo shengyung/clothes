@@ -75,6 +75,15 @@ def upload_image(file_bytes: bytes, content_type: str = "image/png", prefix: str
     return key
 
 
+def delete_image(key: str) -> None:
+    """Delete an object from storage. No-op for empty/already-deleted keys."""
+    if not key or key == "deleted":
+        return
+    client = _get_client()
+    client.delete_object(Bucket=_bucket(), Key=key)
+    _presign_cache.pop(key, None)
+
+
 def get_presigned_url(key: str, expires: int = 3600) -> str:
     """Generate a presigned URL for browser access, reusing a cached URL for the
     same key while it still has enough validity left to be worth caching."""
