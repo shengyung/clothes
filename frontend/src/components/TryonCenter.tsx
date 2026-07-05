@@ -219,8 +219,8 @@ const [uploadedGarmentPreview, setUploadedGarmentPreview] = useState<string | nu
           </div>
         </div>
 
-        {/* Product panel */}
-        <div className="w-[220px] border-l border-[var(--forma-border)] bg-white flex flex-col overflow-hidden">
+        {/* Product panel — desktop only */}
+        <div className="hidden md:flex w-[220px] border-l border-[var(--forma-border)] bg-white flex-col overflow-hidden">
           <div className="px-4 py-3 border-b border-[var(--forma-border)] shrink-0">
             <div className="text-[0.78rem] font-medium text-[#1D1D1F]">服裝照片</div>
           </div>
@@ -317,6 +317,72 @@ const [uploadedGarmentPreview, setUploadedGarmentPreview] = useState<string | nu
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Mobile: garment strip — horizontal scroll, hidden on desktop */}
+      <div className="md:hidden shrink-0 border-t border-[var(--forma-border)] bg-white flex items-center gap-2 px-3 py-2 overflow-x-auto">
+        <button
+          onClick={() => garmentInputRef.current?.click()}
+          disabled={isUploadingGarment}
+          className="shrink-0 w-16 h-20 border-2 border-dashed border-[rgba(0,0,0,0.15)] rounded-xl flex flex-col items-center justify-center gap-1 hover:border-[rgba(0,0,0,0.3)] transition-colors disabled:cursor-not-allowed"
+        >
+          {isUploadingGarment ? (
+            <span className="text-[0.55rem] text-[rgba(0,0,0,0.4)]">上傳中</span>
+          ) : (
+            <>
+              <svg viewBox="0 0 20 20" fill="none" stroke="rgba(0,0,0,0.3)" strokeWidth="1.5" className="w-5 h-5">
+                <line x1="10" y1="4" x2="10" y2="16" />
+                <line x1="4" y1="10" x2="16" y2="10" />
+              </svg>
+              <span className="text-[0.55rem] text-[rgba(0,0,0,0.3)]">服裝</span>
+            </>
+          )}
+        </button>
+        {uploadedGarmentPreview && (
+          <button
+            onClick={() => garmentInputRef.current?.click()}
+            className="shrink-0 w-16 h-20 rounded-xl overflow-hidden border-2 border-[#1D1D1F] relative"
+          >
+            <img src={uploadedGarmentPreview} alt="服裝" className="w-full h-full object-cover" />
+            {isUploadingGarment && (
+              <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
+                <span className="text-[0.55rem] text-[rgba(0,0,0,0.5)]">上傳中</span>
+              </div>
+            )}
+          </button>
+        )}
+        {garmentUploadError && (
+          <span className="text-[0.62rem] text-red-500 shrink-0">{garmentUploadError}</span>
+        )}
+      </div>
+
+      {/* Mobile: credits + try-on button — hidden on desktop */}
+      <div className="md:hidden shrink-0 px-4 py-3 bg-white border-t border-[var(--forma-border)] flex flex-col gap-2">
+        {creditsRemaining !== null && (
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[0.6rem] text-[rgba(0,0,0,0.35)] tracking-[0.03em]">今日剩餘次數</span>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: DAILY_CREDITS }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-2 h-2 rounded-full transition-colors ${
+                    i < creditsRemaining ? "bg-[#1D1D1F]" : "bg-[rgba(0,0,0,0.12)]"
+                  }`}
+                />
+              ))}
+              <span className={`text-[0.6rem] ml-1 font-medium ${outOfCredits ? "text-red-500" : "text-[rgba(0,0,0,0.45)]"}`}>
+                {creditsRemaining}/{DAILY_CREDITS}
+              </span>
+            </div>
+          </div>
+        )}
+        <button
+          onClick={onTryOn}
+          disabled={!canTryOn}
+          className="w-full bg-[#1D1D1F] text-white py-3 text-[0.72rem] tracking-[0.08em] uppercase rounded-lg hover:bg-[#6E6E73] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          {outOfCredits ? "今日次數已達上限" : !personImage ? "請先上傳照片" : !selectedGarmentId ? "請上傳服裝" : "立即試穿"}
+        </button>
       </div>
 
       {/* Step guide */}
