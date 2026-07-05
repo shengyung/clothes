@@ -145,6 +145,11 @@ export async function fetchTryonHistory(): Promise<TryonResult[]> {
   return res.json();
 }
 
+export async function deleteTryon(taskId: string): Promise<void> {
+  const res = await authFetch(`${API_URL}/api/tryon/${taskId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to delete tryon record");
+}
+
 // ── Auth ───────────────────────────────────────────────────────────────────────
 
 export async function registerUser(

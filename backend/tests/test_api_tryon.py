@@ -176,3 +176,50 @@ class TestTryonHistory:
         data = resp.json()
         assert len(data) == 2
         assert data[0]["task_id"] == newer.id
+
+
+class TestDeleteTryon:
+    def test_requires_authentication(self, client, session, garment):
+        task = TryonTask(person_image_url="images/p.png", garment_id=garment.id)
+        session.add(task)
+        session.commit()
+
+        resp = client.delete(f"/api/tryon/{task.id}")
+        assert resp.status_code == 401
+
+    def test_nonexistent_task_returns_404(self, client, registered_user, auth_headers):
+        resp = client.delete("/api/tryon/nonexistent-task-id", headers=auth_headers)
+        assert resp.status_code == 404
+
+    def test_other_users_task_returns_404(self, client, session, garment, registered_user, auth_headers):
+        # Owned by nobody (anonymous task) — not the logged-in user, so must not be deletable by them.
+        other_task = TryonTask(person_image_url="images/p.png", garment_id=garment.id, user_id=None)
+        session.add(other_task)
+        session.commit()
+
+        resp = client.delete(f"/api/tryon/{other_task.id}", headers=auth_headers)
+        assert resp.status_code == 404
+
+    def test_owner_can_delete_and_images_are_cleaned_up(
+        self, client, session, garment, registered_user, auth_headers
+    ):
+        user_id = registered_user["user"]["id"]
+        task = TryonTask(
+            person_image_url="person-images/p.png",
+            garment_id=garment.id,
+            user_id=user_id,
+            status="completed",
+            result_image_url="result-images/r.png",
+        )
+        session.add(task)
+        session.commit()
+        session.refresh(task)
+        task_id = task.id
+
+        with patch("app.api.tryon.delete_image") as mock_delete:
+            resp = client.delete(f"/api/tryon/{task_id}", headers=auth_headers)
+
+        assert resp.status_code == 204
+        mock_delete.assert_any_call("person-images/p.png")
+        mock_delete.assert_any_call("result-images/r.png")
+        assert session.get(TryonTask, task_id) is None

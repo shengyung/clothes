@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { fetchTryonHistory, TryonResult } from "@/lib/api";
+import { deleteTryon, fetchTryonHistory, TryonResult } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 
 interface OutfitRecordsProps {
@@ -27,6 +27,7 @@ export default function OutfitRecords({ refreshTrigger }: OutfitRecordsProps) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const [enlarged, setEnlarged] = useState<TryonResult | null>(null);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const prevTrigger = useRef<number | undefined>(undefined);
 
   useEffect(() => {
@@ -60,6 +61,24 @@ export default function OutfitRecords({ refreshTrigger }: OutfitRecordsProps) {
       else next.add(id);
       return next;
     });
+  }
+
+  async function handleDelete(id: string) {
+    if (!window.confirm("確定要刪除這筆試穿紀錄嗎？此動作無法復原。")) return;
+
+    setDeletingIds((prev) => new Set(prev).add(id));
+    try {
+      await deleteTryon(id);
+      setRecords((prev) => prev.filter((r) => r.task_id !== id));
+    } catch {
+      alert("刪除失敗，請稍後再試");
+    } finally {
+      setDeletingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
   }
 
   return (
@@ -180,6 +199,16 @@ export default function OutfitRecords({ refreshTrigger }: OutfitRecordsProps) {
                       下載
                     </a>
                   )}
+                  <button
+                    onClick={() => handleDelete(record.task_id)}
+                    disabled={deletingIds.has(record.task_id)}
+                    className="ml-auto flex items-center gap-1 text-[0.6rem] text-[rgba(0,0,0,0.28)] hover:text-red-500 transition-colors disabled:opacity-40"
+                  >
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
+                      <path d="M3 4h10M6.5 4V2.5h3V4M4.5 4l.5 9.5h6l.5-9.5" />
+                    </svg>
+                    {deletingIds.has(record.task_id) ? "刪除中..." : "刪除"}
+                  </button>
                 </div>
               </div>
             ))
