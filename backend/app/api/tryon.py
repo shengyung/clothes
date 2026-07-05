@@ -8,7 +8,7 @@ from app.db import get_session
 from app.inference import run_tryon
 from app.main import limiter
 from app.models import Garment, TryonTask, User
-from app.storage import get_presigned_url, upload_image
+from app.storage import delete_image, get_presigned_url, upload_image
 
 router = APIRouter(tags=["tryon"])
 
@@ -94,3 +94,21 @@ def get_tryon_status(task_id: str, session: Session = Depends(get_session)):
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     return _task_to_dict(task)
+
+
+@router.delete("/tryon/{task_id}", status_code=204)
+def delete_tryon(
+    task_id: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    task = session.get(TryonTask, task_id)
+    if not task or task.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    delete_image(task.person_image_url)
+    if task.result_image_url:
+        delete_image(task.result_image_url)
+
+    session.delete(task)
+    session.commit()
