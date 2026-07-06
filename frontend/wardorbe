@@ -1,1 +1,365 @@
+"use client";
+/**
+ * 衣物管理頁面
+ * 放到 frontend/app/wardrobe/page.tsx
+ * 網址會是 shapeonyou.io/wardrobe
+ */
+import { useState, useEffect, useRef } from "react";
+import QRCode from "qrcode";
+
+// ── 型別 ──────────────────────────────────────────────────────
+interface ClothingItem {
+  id: string;
+  name: string;
+  category: string;
+  color?: string;
+  material?: string;
+  pattern?: string;
+  brand?: string;
+  season?: string[];
+  care?: string;
+  link?: string;
+  image_base64?: string;
+  created_at: string;
+}
+
+const CATEGORIES = ["上衣","褲子","外套","裙子","洋裝","鞋子","配件","包包","其他"];
+const SEASONS    = ["春","夏","秋","冬"];
+const API_BASE   = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+// ── 工具函式 ──────────────────────────────────────────────────
+async function resizeImage(file: File, maxDim = 600, quality = 0.75): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > h) { if (w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; } }
+        else        { if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; } }
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => reject(new Error("image decode failed"));
+      img.src = e.target!.result as string;
+    };
+    reader.onerror = () => reject(new Error("file read failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
+// ── 元件 ──────────────────────────────────────────────────────
+export default function WardrobePage() {
+  const [tab, setTab]             = useState<"add"|"closet">("add");
+  const [items, setItems]         = useState<ClothingItem[]>([]);
+  const [selected, setSelected]   = useState<ClothingItem | null>(null);
+  const [image, setImage]         = useState<string | null>(null);
+  const [status, setStatus]       = useState("");
+  const [isError, setIsError]     = useState(false);
+  const [loading, setLoading]     = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // 表單狀態
+  const [form, setForm] = useState({
+    name:"", category:"上衣", color:"", material:"",
+    pattern:"", brand:"", care:"", link:"", season:[] as string[]
+  });
+
+  // ── API 呼叫 ────────────────────────────────────────────────
+  const fetchItems = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/clothes/`);
+      if (res.ok) setItems(await res.json());
+    } catch { /* 離線時靜默失敗 */ }
+  };
+
+  useEffect(() => { fetchItems(); }, []);
+
+  // 開啟衣物詳情時產生 QR code
+  useEffect(() => {
+    if (!selected) return;
+    const content = selected.link || buildQRText(selected);
+    QRCode.toDataURL(content, { width: 160, margin: 1, errorCorrectionLevel: "M" })
+      .then(setQrDataUrl)
+      .catch(() => setQrDataUrl(""));
+  }, [selected]);
+
+  function buildQRText(item: ClothingItem) {
+    const lines = [`名稱：${item.name}`, `類別：${item.category}`];
+    if (item.color)    lines.push(`顏色：${item.color}`);
+    if (item.material) lines.push(`材質：${item.material}`);
+    if (item.brand)    lines.push(`品牌：${item.brand}`);
+    if (item.season?.length) lines.push(`季節：${item.season.join("、")}`);
+    if (item.care)     lines.push(`保養：${item.care}`);
+    lines.push(`ID：${item.id}`);
+    return lines.join("\n").slice(0, 300);
+  }
+
+  // ── 上傳照片 ────────────────────────────────────────────────
+  const handleFile = async (file: File) => {
+    try {
+      const b64 = await resizeImage(file);
+      setImage(b64);
+      setStatus("");
+    } catch {
+      setStatus("讀取圖片失敗，請換一張再試"); setIsError(true);
+    }
+  };
+
+  // ── AI 辨識 ─────────────────────────────────────────────────
+  const recognize = async () => {
+    if (!image) return;
+    setLoading(true);
+    setStatus("AI 辨識中，請稍候…"); setIsError(false);
+    try {
+      const base64 = image.split(",")[1];
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1000,
+          messages: [{
+            role: "user",
+            content: [
+              { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
+              { type: "text", text: '你是衣物建檔助手。請回傳一個 JSON，不要有任何說明或 markdown：{"name":"","category":"上衣/褲子/外套/裙子/洋裝/鞋子/配件/包包/其他 擇一","color":"","material":"","pattern":"","season":[],"brand":"","care":""}' }
+            ]
+          }]
+        })
+      });
+      const data = await res.json();
+      const text = (data.content as {type:string;text:string}[])
+        .filter(b => b.type === "text").map(b => b.text).join("");
+      const parsed = JSON.parse(text.replace(/```json|```/g,"").trim());
+      setForm(f => ({ ...f, ...parsed, season: parsed.season ?? [] }));
+      setStatus("辨識完成，請確認或修改資料"); setIsError(false);
+    } catch {
+      setStatus("AI 辨識失敗，請手動填寫"); setIsError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── 儲存 ────────────────────────────────────────────────────
+  const save = async () => {
+    if (!form.name.trim()) { setStatus("請輸入名稱"); setIsError(true); return; }
+    if (!image)            { setStatus("請先上傳照片"); setIsError(true); return; }
+    try {
+      const res = await fetch(`${API_BASE}/api/clothes/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, image_base64: image })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const newItem: ClothingItem = await res.json();
+      setItems(prev => [newItem, ...prev]);
+      // 重置
+      setImage(null); setForm({ name:"",category:"上衣",color:"",material:"",pattern:"",brand:"",care:"",link:"",season:[] }); setStatus("");
+      setSelected(newItem); setTab("closet");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "未知錯誤";
+      setStatus(`儲存失敗（${msg}）`); setIsError(true);
+    }
+  };
+
+  // ── 刪除 ────────────────────────────────────────────────────
+  const deleteItem = async (id: string) => {
+    await fetch(`${API_BASE}/api/clothes/${id}`, { method: "DELETE" });
+    setItems(prev => prev.filter(i => i.id !== id));
+    setSelected(null);
+  };
+
+  const toggleSeason = (s: string) =>
+    setForm(f => ({ ...f, season: f.season.includes(s) ? f.season.filter(x => x !== s) : [...f.season, s] }));
+
+  // ── UI ──────────────────────────────────────────────────────
+  return (
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-xl mx-auto">
+        <p className="text-xs text-gray-400 uppercase tracking-widest mb-1">個人衣物資料庫</p>
+        <h1 className="text-2xl font-semibold mb-6">衣櫥檔案</h1>
+
+        {/* 分頁 */}
+        <div className="flex gap-1 p-1 bg-gray-100 rounded-xl mb-6">
+          {(["add","closet"] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${tab===t ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700"}`}>
+              {t === "add" ? "拍照建檔" : `我的衣櫥 ${items.length ? `(${items.length})` : ""}`}
+            </button>
+          ))}
+        </div>
+
+        {/* 拍照建檔 */}
+        {tab === "add" && (
+          <div className="space-y-4">
+            {/* 上傳區 */}
+            {!image ? (
+              <div onClick={() => fileRef.current?.click()}
+                className="border-2 border-dashed border-gray-200 rounded-2xl p-10 text-center cursor-pointer hover:bg-gray-50 transition-colors">
+                <div className="text-4xl mb-2">📷</div>
+                <p className="text-gray-500 text-sm">點擊上傳衣物照片</p>
+                <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden"
+                  onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
+              </div>
+            ) : (
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 space-y-4">
+                {/* 縮圖 + 辨識按鈕 */}
+                <div className="flex gap-3 items-start">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={image} alt="預覽" className="w-16 h-16 object-cover rounded-xl flex-shrink-0" />
+                  <div className="flex-1">
+                    <button onClick={recognize} disabled={loading}
+                      className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                      {loading ? "⏳ 辨識中…" : "✨ AI 辨識衣物"}
+                    </button>
+                    {status && <p className={`text-xs mt-1 ${isError ? "text-red-500" : "text-gray-400"}`}>{status}</p>}
+                  </div>
+                </div>
+
+                {/* 表單欄位 */}
+                <div>
+                  <label className="text-xs text-gray-400 uppercase tracking-wider">名稱</label>
+                  <input value={form.name} onChange={e => setForm(f=>({...f,name:e.target.value}))}
+                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="例如：海軍藍棉質襯衫" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label:"類別", key:"category", el: <select value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))} className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select> },
+                    { label:"顏色", key:"color",    el: <input value={form.color}    onChange={e=>setForm(f=>({...f,color:e.target.value}))}    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm" /> },
+                    { label:"材質", key:"material", el: <input value={form.material} onChange={e=>setForm(f=>({...f,material:e.target.value}))} className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm" /> },
+                    { label:"花紋", key:"pattern",  el: <input value={form.pattern}  onChange={e=>setForm(f=>({...f,pattern:e.target.value}))}  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm" /> },
+                    { label:"品牌", key:"brand",    el: <input value={form.brand}    onChange={e=>setForm(f=>({...f,brand:e.target.value}))}    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm" /> },
+                  ].map(({ label, key, el }) => (
+                    <div key={key}><label className="text-xs text-gray-400 uppercase tracking-wider">{label}</label>{el}</div>
+                  ))}
+
+                  <div>
+                    <label className="text-xs text-gray-400 uppercase tracking-wider">適合季節</label>
+                    <div className="flex gap-2 mt-2 flex-wrap">
+                      {SEASONS.map(s => (
+                        <label key={s} className="flex items-center gap-1 text-sm cursor-pointer">
+                          <input type="checkbox" checked={form.season.includes(s)} onChange={() => toggleSeason(s)} />
+                          {s}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs text-gray-400 uppercase tracking-wider">保養方式</label>
+                  <textarea value={form.care} onChange={e=>setForm(f=>({...f,care:e.target.value}))} rows={2}
+                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none" placeholder="例如：冷水手洗、避免曝曬" />
+                </div>
+
+                <div>
+                  <label className="text-xs text-gray-400 uppercase tracking-wider">連結網址（選填）</label>
+                  <input value={form.link} onChange={e=>setForm(f=>({...f,link:e.target.value}))} type="url"
+                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="貼上 Google Drive 分享連結" />
+                </div>
+
+                <button onClick={save}
+                  className="w-full py-2.5 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors">
+                  加入衣櫥
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 我的衣櫥 */}
+        {tab === "closet" && (
+          <div>
+            {items.length === 0 ? (
+              <div className="text-center py-16 text-gray-400">
+                <div className="text-4xl mb-2">👕</div>
+                <p>衣櫥還是空的，先去拍張照建檔吧</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-3">
+                {items.map(item => (
+                  <div key={item.id} onClick={() => setSelected(item)}
+                    className="bg-white border border-gray-100 rounded-xl p-2 cursor-pointer hover:border-gray-300 transition-colors">
+                    {item.image_base64
+                      // eslint-disable-next-line @next/next/no-img-element
+                      ? <img src={item.image_base64} alt={item.name} className="w-full aspect-square object-cover rounded-lg" />
+                      : <div className="w-full aspect-square bg-gray-100 rounded-lg flex items-center justify-center text-2xl">👕</div>
+                    }
+                    <p className="text-xs font-medium mt-1.5 truncate">{item.name}</p>
+                    <p className="text-xs text-gray-400">{item.category}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 詳情面板 */}
+            {selected && (
+              <div className="mt-6 bg-white border border-gray-100 rounded-2xl p-5 space-y-4">
+                <div className="flex gap-4">
+                  {selected.image_base64
+                    // eslint-disable-next-line @next/next/no-img-element
+                    ? <img src={selected.image_base64} alt={selected.name} className="w-24 h-24 object-cover rounded-xl flex-shrink-0" />
+                    : <div className="w-24 h-24 bg-gray-100 rounded-xl flex-shrink-0 flex items-center justify-center text-3xl">👕</div>
+                  }
+                  <div className="flex-1 space-y-1">
+                    <p className="font-medium">{selected.name}</p>
+                    {[
+                      ["類別", selected.category],
+                      ["顏色", selected.color],
+                      ["材質", selected.material],
+                      ["花紋", selected.pattern],
+                      ["品牌", selected.brand],
+                      ["季節", selected.season?.join("、")],
+                    ].filter(([,v]) => v).map(([k,v]) => (
+                      <div key={k as string} className="flex justify-between text-sm">
+                        <span className="text-gray-400">{k as string}</span>
+                        <span className="font-mono text-xs">{v as string}</span>
+                      </div>
+                    ))}
+                    {selected.link && (
+                      <a href={selected.link} target="_blank" rel="noopener noreferrer"
+                        className="text-xs text-blue-500 hover:underline block">開啟連結</a>
+                    )}
+                  </div>
+                </div>
+
+                {selected.care && (
+                  <p className="text-xs text-gray-400 border-t border-gray-100 pt-3">保養：{selected.care}</p>
+                )}
+
+                {/* QR Code */}
+                <div className="flex gap-4 items-center border-t border-gray-100 pt-4">
+                  {qrDataUrl
+                    // eslint-disable-next-line @next/next/no-img-element
+                    ? <img src={qrDataUrl} alt="QR Code" className="w-24 h-24 flex-shrink-0" />
+                    : <div className="w-24 h-24 bg-gray-100 rounded-lg flex-shrink-0" />
+                  }
+                  <p className="text-xs text-gray-400 flex-1">
+                    {selected.link ? "掃描會直接開啟連結" : "掃描即可查看衣物完整資訊，可列印貼在標籤上"}
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <button onClick={() => { setSelected(null); }}
+                    className="flex-1 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 transition-colors">
+                    關閉
+                  </button>
+                  <button onClick={() => deleteItem(selected.id)}
+                    className="flex-1 py-2 border border-red-200 text-red-500 rounded-lg text-sm hover:bg-red-50 transition-colors">
+                    刪除
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
