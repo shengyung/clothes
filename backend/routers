@@ -1,0 +1,88 @@
+"""
+衣物管理 API Router
+放到 backend/routers/clothes.py
+然後在 main.py 加上：
+    from routers.clothes import router as clothes_router
+    app.include_router(clothes_router)
+"""
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from pydantic import BaseModel
+from typing import Optional, List
+from datetime import datetime
+import uuid, os
+
+from models_clothes import Base, ClothingItem
+
+# ── 資料庫連線（沿用你們現有的 DATABASE_URL）─────────────────
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./tryon.db")
+engine       = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(bind=engine)
+
+# 第一次啟動時自動建立 clothes 資料表
+Base.metadata.create_all(bind=engine)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+router = APIRouter(prefix="/api/clothes", tags=["clothes"])
+
+# ── Pydantic Schema ───────────────────────────────────────────
+class ClothesCreate(BaseModel):
+    name:         str
+    category:     str
+    color:        Optional[str] = None
+    material:     Optional[str] = None
+    pattern:      Optional[str] = None
+    brand:        Optional[str] = None
+    season:       Optional[List[str]] = []
+    care:         Optional[str] = None
+    link:         Optional[str] = None
+    image_base64: Optional[str] = None  # 前端壓縮過的 base64
+
+class ClothesOut(ClothesCreate):
+    id:         str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# ── API 端點 ──────────────────────────────────────────────────
+
+# 新增一件衣物
+@router.post("/", response_model=ClothesOut)
+def create_item(body: ClothesCreate, db: Session = Depends(get_db)):
+    item = ClothingItem(id=str(uuid.uuid4()), **body.model_dump())
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+# 取得所有衣物（最新的在前面）
+@router.get("/", response_model=List[ClothesOut])
+def list_items(db: Session = Depends(get_db)):
+    return db.query(ClothingItem).order_by(ClothingItem.created_at.desc()).all()
+
+# 取得單件衣物
+@router.get("/{item_id}", response_model=ClothesOut)
+def get_item(item_id: str, db: Session = Depends(get_db)):
+    item = db.query(ClothingItem).filter(ClothingItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="找不到這件衣物")
+    return item
+
+# 刪除一件衣物
+@router.delete("/{item_id}")
+def delete_item(item_id: str, db: Session = Depends(get_db)):
+    item = db.query(ClothingItem).filter(ClothingItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="找不到這件衣物")
+    db.delete(item)
+    db.commit()
+    return {"ok": True}
